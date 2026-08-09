@@ -1,0 +1,6 @@
+# Surface the backend language on GitHub. The web UI, the stylesheet, the small
+# amount of JavaScript, and the rendered page snapshots are not what this project
+# is about, so exclude them from the language breakdown. The core is Python.
+*.html linguist-vendored
+*.css  linguist-vendored
+*.js   linguist-vendored
