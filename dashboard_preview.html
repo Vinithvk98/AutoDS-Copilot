@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard, sample_customers.csv</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+/* ============================================================
+   AutoDS Copilot — editorial-professional theme
+   light paper, serif headlines, clean sans, one restrained accent
+   ============================================================ */
+:root{
+  --paper:#ffffff;
+  --paper-2:#f7f6f3;
+  --paper-3:#f0efea;
+  --ink:#1b1d23;
+  --ink-2:#565d6a;
+  --ink-3:#8b90a0;
+  --line:#e9e7e1;
+  --line-2:#dcd9d1;
+  --accent:#2a44b8;
+  --accent-2:#1e3390;
+  --accent-soft:#eef1fb;
+  --warm:#a8551f;
+  --warm-soft:#f6efe8;
+  --ok:#1f7a54;
+  --serif:'Fraunces',Georgia,'Times New Roman',serif;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:var(--sans);font-size:15px;line-height:1.6;color:var(--ink);
+  background:var(--paper);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+h1{font-family:var(--serif);font-weight:500;font-size:31px;line-height:1.15;letter-spacing:-.01em;
+  margin:.1em 0 .35em;color:var(--ink)}
+h2{font-family:var(--sans);font-weight:600;font-size:20px;margin:1.5em 0 .5em;letter-spacing:-.01em}
+h3{font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 .8em}
+.lede{color:var(--ink-2);font-size:16px;max-width:70ch}
+.muted{color:var(--ink-2)}
+
+/* ---------- app shell ---------- */
+.shell{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.container{max-width:1000px;margin:0 auto;padding:40px 34px 72px;animation:rise .35s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.main{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.stagewrap{flex:1;overflow-y:auto}
+
+/* ---------- sidebar rail ---------- */
+.rail{position:sticky;top:0;align-self:start;height:100vh;display:flex;flex-direction:column;
+  padding:26px 24px;border-right:1px solid var(--line);background:var(--paper-2)}
+.brand{display:flex;align-items:baseline;gap:2px;color:var(--ink)}
+.brand-mark{display:none}
+.brand-name{font-family:var(--serif);font-weight:600;font-size:20px;letter-spacing:-.01em}
+.brand-name i{font-style:normal;color:var(--ink-3);font-weight:400}
+.rail-tag{font-size:11px;letter-spacing:.1em;color:var(--ink-3);text-transform:uppercase;margin:8px 1px 28px}
+
+.rail-steps{list-style:none;margin:0;padding:0;position:relative;flex:1}
+.rail-steps::before{content:"";position:absolute;left:9px;top:10px;bottom:20px;width:1px;background:var(--line-2)}
+.rstep{position:relative;display:grid;grid-template-columns:24px 1fr;column-gap:12px;padding:9px 0}
+.rnode{grid-row:span 2;width:11px;height:11px;margin:4px 0 0 4px;border-radius:50%;
+  border:1.5px solid var(--line-2);background:var(--paper);transition:.25s;z-index:1}
+.rnum{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.rlabel{font-weight:500;font-size:14.5px;grid-column:2;color:var(--ink-2)}
+.rcode{font-family:var(--mono);font-size:10px;color:var(--ink-3);grid-column:2}
+.rstep.done .rnode{border-color:var(--accent);background:var(--accent)}
+.rstep.active .rnode{border-color:var(--accent);background:var(--paper);box-shadow:0 0 0 3px var(--accent-soft)}
+.rstep.active .rlabel{color:var(--ink)}
+.rstep.active .rnum{color:var(--accent)}
+.rail-foot{font-size:11px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:14px}
+.rail-foot .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:6px}
+.rail-stack{margin-top:6px;color:var(--ink-3)}
+
+/* living-rail artifacts */
+.rart{grid-column:2;display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.rart:empty{display:none}
+.spark{fill:var(--accent);opacity:.85}
+.rbadge{font-family:var(--mono);font-size:11px;color:var(--accent-2);background:var(--accent-soft);
+  border-radius:5px;padding:1px 7px;align-self:flex-start;max-width:190px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.rsub{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+
+/* agent console strip */
+.console{flex:none;height:150px;display:flex;flex-direction:column;border-top:1px solid var(--line);
+  background:var(--paper-2)}
+.console-head{display:flex;justify-content:space-between;align-items:center;padding:9px 20px;
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);border-bottom:1px solid var(--line)}
+.clog{flex:1;overflow-y:auto;padding:12px 20px;font-family:var(--mono);font-size:12px;line-height:1.7}
+.cline{color:var(--ink-2);animation:fadein .25s ease}
+.cline .cprompt{color:var(--accent);margin-right:7px}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+
+/* ---------- cards & layout ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:16px 0;
+  box-shadow:0 1px 2px rgba(20,20,35,.03)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+.actions{display:flex;gap:10px;margin:24px 0 0;flex-wrap:wrap;align-items:center}
+
+/* ---------- forms ---------- */
+.field{display:block;margin:14px 0}
+.field span{display:block;margin-bottom:6px;font-size:13px;font-weight:500;color:var(--ink-2)}
+.field em{color:var(--ink-3);font-style:normal;font-weight:400}
+input[type=text],select,input[type=file]{width:100%;padding:10px 12px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px}
+input[type=text]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.or{text-align:center;color:var(--ink-3);margin:14px 0;font-size:12px;letter-spacing:.05em}
+.inline{display:inline}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;cursor:pointer;
+  font-family:var(--sans);font-size:14px;font-weight:500;border:1px solid var(--line-2);
+  background:var(--paper);color:var(--ink);transition:.15s}
+.btn:hover{border-color:var(--ink-3);background:var(--paper-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
+.alert{background:var(--warm-soft);border:1px solid #e6cdb8;color:#7c3d15;padding:11px 15px;border-radius:8px;margin:12px 0}
+
+/* ---------- tables / pills ---------- */
+.kv{width:100%;border-collapse:collapse}
+.kv td{padding:8px 6px;border-bottom:1px solid var(--line);font-size:14px}
+.kv td:first-child{color:var(--ink-2)}
+.kv tr:last-child td{border-bottom:0}
+.pill{font-size:12px;font-weight:500;background:var(--accent-soft);color:var(--accent-2);
+  padding:2px 9px;border-radius:20px}
+
+/* ---------- insights ---------- */
+.insights{margin:0;padding:0;list-style:none}
+.insights li{position:relative;padding:9px 0 9px 20px;border-bottom:1px solid var(--line);font-size:14.5px;color:var(--ink)}
+.insights li:last-child{border-bottom:0}
+.insights li::before{content:"";position:absolute;left:2px;top:16px;width:7px;height:7px;border-radius:50%;
+  background:var(--accent-soft);border:1.5px solid var(--accent)}
+
+/* ---------- RAG: rationale, experience, sources ---------- */
+.rationale{border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;
+  padding:12px 16px;margin:14px 0;color:var(--ink-2);font-size:14px;line-height:1.6}
+.rationale-why{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--accent-2);margin-right:8px}
+.rationale-src{display:block;margin-top:6px;font-size:12px;color:var(--ink-3)}
+.experience{background:var(--paper-2)}
+.simlist{margin:8px 0 0;padding:0;list-style:none}
+.simlist li{padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.simlist li:last-child{border-bottom:0}
+.answer p{font-size:16px;line-height:1.75;color:var(--ink);margin:0}
+.sources{margin:0;padding:0;list-style:none}
+.sources li{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+.sources li:last-child{border-bottom:0}
+.sources > li > div{display:flex;flex-direction:column;gap:2px}
+.src-text{color:var(--ink-2);font-size:14px}
+.src-tag{flex:none;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 8px;border-radius:20px;margin-top:2px}
+.src-tag.guidance{background:var(--accent-soft);color:var(--accent-2)}
+.src-tag.run{background:#eaf3ea;color:#2c6a3f}
+
+/* ---------- data checks ---------- */
+.checklist{margin:0;padding:0;list-style:none}
+.chk{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:0}
+.chk > div{display:flex;flex-direction:column;gap:2px}
+.chk b{font-weight:600}
+.chk-detail{color:var(--ink-2);font-size:14px}
+.chk-tag{flex:none;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 8px;border-radius:20px;margin-top:2px}
+.chk.risk .chk-tag{background:var(--warm-soft);color:#a8551f;border:1px solid #e6cdb8}
+.chk.warn .chk-tag{background:#fbf3d9;color:#8a6d1a;border:1px solid #ecdca6}
+.chk.info .chk-tag{background:var(--accent-soft);color:var(--accent-2);border:1px solid #cdd6f5}
+
+/* ---------- pre-clean report ---------- */
+.preclean{background:var(--paper-2)}
+.fixlist{margin:0;padding:0;list-style:none;font-size:13.5px}
+.fixlist li{position:relative;padding:7px 0 7px 24px;color:var(--ink-2);border-bottom:1px solid var(--line)}
+.fixlist li:last-child{border-bottom:0}
+.fixlist li::before{content:"¹3";position:absolute;left:3px;color:var(--ok);font-weight:600}
+
+/* ---------- EDA gallery ---------- */
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.chart{margin:0;background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden;transition:.15s}
+.chart:hover{border-color:var(--line-2);box-shadow:0 4px 16px rgba(20,20,35,.06)}
+.chart img{width:100%;display:block;background:#fff;border-bottom:1px solid var(--line)}
+.chart figcaption{padding:13px 15px;font-size:13px;display:flex;flex-direction:column;gap:8px}
+.chart figcaption b{font-weight:600}
+.chart code{font-family:var(--mono);background:var(--paper-2);border:1px solid var(--line);padding:6px 8px;
+  border-radius:6px;font-size:11.5px;color:var(--ink-2);overflow-x:auto}
+.chart .insight{color:var(--ink-2)}
+
+/* ---------- model picker (grouped) ---------- */
+.mgroup{margin:20px 0}
+.mgroup-h{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-3);margin:0 0 10px}
+.mgroup-h::after{content:"";flex:1;height:1px;background:var(--line)}
+.mgroup-h span{color:var(--ink-3);background:var(--paper-2);border:1px solid var(--line);border-radius:20px;padding:1px 8px}
+.modellist{display:flex;flex-direction:column;gap:10px}
+.model{display:grid;grid-template-columns:22px 1fr;gap:5px 12px;padding:14px 16px;border-radius:10px;
+  border:1px solid var(--line);background:var(--paper);cursor:pointer;transition:.15s;align-items:start}
+.model:hover{border-color:var(--line-2);background:var(--paper-2)}
+.model.rec{border-color:var(--accent);background:var(--accent-soft)}
+.model input{grid-row:span 2;margin-top:3px;accent-color:var(--accent)}
+.mname{font-weight:600}
+.mname em{font-style:normal;color:var(--accent-2);font-weight:500;font-size:13px}
+.mwhy{color:var(--ink-2);font-size:13px}
+.check{display:flex;align-items:center;gap:9px;margin:9px 0;font-size:14px}
+.check input{accent-color:var(--accent)}
+
+/* ---------- metrics ---------- */
+.metrics{display:flex;gap:14px;flex-wrap:wrap;margin:20px 0}
+.metric{background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:16px 22px;min-width:110px}
+.mval{display:block;font-family:var(--serif);font-size:28px;font-weight:500;color:var(--ink);line-height:1}
+.mkey{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);margin-top:8px;display:block}
+
+/* ---------- leaderboard ---------- */
+.board th{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--ink-3);padding:9px 6px;border-bottom:1px solid var(--line-2)}
+.board td{font-size:14px}
+.board .bestrow{background:var(--accent-soft)}
+
+/* ---------- feature bars ---------- */
+.bars td{padding:7px 6px}
+.bars .bar{display:inline-block;height:8px;border-radius:4px;background:var(--accent)}
+
+/* ---------- BI dashboard ---------- */
+.dash{max-width:1160px;margin:0 auto;padding:34px 28px 70px}
+.dash-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.dash-head h1{margin:10px 0 4px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px}
+.kpi{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.kpi-val{display:block;font-family:var(--serif);font-size:30px;font-weight:500;color:var(--ink);line-height:1}
+.kpi-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);margin-top:8px;display:block}
+.dash-cv{margin:14px 2px 0}
+.dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:22px}
+.dash-grid .wide{grid-column:1 / -1}
+@media(max-width:820px){.dash-grid{grid-template-columns:1fr}}
+.chart-box{position:relative;height:280px}
+.cm{border-collapse:collapse;width:100%;font-size:13px;text-align:center}
+.cm th{color:var(--ink-3);font-weight:600;padding:6px}
+.cm td{border:1px solid var(--line);padding:12px;font-family:var(--mono);font-weight:500}
+.cm.corr td{padding:8px;font-size:12px}
+.cm.corr th{font-size:11px;padding:5px}
+.corrwrap{overflow-x:auto}
+@media print{.dash-head .btn,.tabs,.filterbar{display:none}.panel{display:block !important}}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:20px 0 0}
+.tab{appearance:none;border:0;background:none;font-family:var(--sans);font-size:15px;font-weight:500;
+  color:var(--ink-3);padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.panel{display:none;padding-top:22px}
+.panel.active{display:block;animation:rise .3s ease both}
+
+/* filter bar */
+.filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding:12px 16px;
+  background:var(--paper-2);border:1px solid var(--line);border-radius:10px}
+.fb-label{font-size:13px;font-weight:500;color:var(--ink-2)}
+.filterbar select{width:auto;min-width:130px;padding:7px 10px}
+.btn.sm{padding:6px 12px;font-size:13px}
+.fb-count{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-left:auto}
+
+/* card controls */
+.card-ctrl{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-ctrl h3{margin:0}
+select.mini{width:auto;min-width:120px;padding:6px 10px;font-size:13px}
+
+/* health */
+.health{padding:8px 0}
+.health-num{font-family:var(--serif);font-size:52px;font-weight:500;color:var(--accent);line-height:1}
+.health-sub{color:var(--ink-2);margin-top:8px;font-size:14px}
+
+/* data table */
+.tablewrap{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.dtable{border-collapse:collapse;width:100%;font-size:13px}
+.dtable th{position:sticky;top:0;background:var(--paper-2);text-align:left;padding:9px 12px;
+  border-bottom:1px solid var(--line-2);cursor:pointer;white-space:nowrap;font-weight:600;color:var(--ink-2)}
+.dtable td{padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dtable tbody tr:hover{background:var(--paper-2)}
+
+/* ---------- code block ---------- */
+.code-block{margin:6px 0 0;padding:16px 18px;background:#1b1d23;border-radius:8px;overflow-x:auto}
+.code-block code{font-family:var(--mono);font-size:12.5px;line-height:1.7;color:#e7e6e2;white-space:pre}
+
+/* ---------- analysis report (the signature output) ---------- */
+.report{max-width:720px;margin:0 auto}
+.report-head{margin-bottom:26px;padding-bottom:22px;border-bottom:1px solid var(--line)}
+.report-head h1{font-size:40px;margin:0;line-height:1.1}
+.report-sub{color:var(--ink-2);font-size:17px;margin:10px 0 0}
+.report-sec{margin:30px 0}
+.report-sec h2{font-family:var(--serif);font-weight:500;font-size:23px;margin:0 0 12px;text-transform:none;
+  letter-spacing:0;color:var(--ink)}
+.report-sec p{font-size:16.5px;line-height:1.78;color:var(--ink);margin:0 0 14px;max-width:68ch}
+.report-list{margin:4px 0 16px;padding-left:20px}
+.report-list li{margin:7px 0;color:var(--ink-2);line-height:1.6}
+.report-figs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.report-figs img{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff}
+.report-note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:13px 17px;
+  border-radius:0 8px 8px 0;color:var(--ink-2);font-size:14.5px;line-height:1.6;margin:16px 0}
+.report-page{padding:44px 24px 80px}
+.report-actions{max-width:720px;margin:0 auto 28px;display:flex;justify-content:space-between;align-items:center}
+.report .metrics{margin:8px 0 18px}
+.report .board{margin:6px 0 4px}
+@media(max-width:640px){.report-figs{grid-template-columns:1fr}}
+@media print{.report-actions,.btn{display:none}.report-page{padding:0}}
+
+/* ============================================================
+   LANDING PAGE
+   ============================================================ */
+.lp-wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+.lp-nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0;position:sticky;top:0;
+  z-index:5;background:rgba(255,255,255,.85);backdrop-filter:blur(6px);border-bottom:1px solid transparent}
+.lp-nav.scrolled{border-bottom-color:var(--line)}
+.lp-nav .brand-name{font-family:var(--serif);font-weight:600;font-size:20px}
+.lp-links{display:flex;align-items:center;gap:24px}
+.lp-links a{font-size:14px;color:var(--ink-2)}
+.lp-links a:hover{color:var(--ink);text-decoration:none}
+.lp-links a.btn.primary{color:#fff}
+.lp-links a.btn.primary:hover{color:#fff}
+@media(max-width:720px){.lp-links a.navlink{display:none}}
+
+.lp-hero{text-align:center;padding:86px 0 44px;max-width:820px;margin:0 auto;animation:rise .5s ease both}
+.lp-eyebrow{display:inline-block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);
+  font-weight:600;margin-bottom:20px}
+.lp-title{font-family:var(--serif);font-weight:500;font-size:clamp(36px,5.4vw,58px);line-height:1.08;
+  letter-spacing:-.015em;margin:0;color:var(--ink)}
+.lp-sub{margin:24px auto 0;color:var(--ink-2);font-size:18px;line-height:1.6;max-width:60ch}
+.lp-cta-row{display:flex;gap:12px;justify-content:center;margin:32px 0 0;flex-wrap:wrap}
+.btn.lg{padding:13px 24px;font-size:15px}
+.lp-trust{margin:20px 0 0;font-size:13.5px;color:var(--ink-3)}
+
+/* console preview */
+.lp-peek{max-width:680px;margin:52px auto 0;border:1px solid var(--line-2);border-radius:12px;overflow:hidden;
+  background:var(--paper);box-shadow:0 12px 40px rgba(20,20,40,.08);animation:rise .7s ease both}
+.lp-peek-bar{display:flex;align-items:center;gap:7px;padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper-2)}
+.lp-peek-bar i{width:11px;height:11px;border-radius:50%;display:inline-block}
+.lp-peek-bar .r{background:#e26d5c}.lp-peek-bar .y{background:#e0b23c}.lp-peek-bar .g{background:#5aab6b}
+.lp-peek-bar span{margin-left:8px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.lp-peek-body{padding:18px;font-family:var(--mono);font-size:13px;line-height:1.95;color:var(--ink-2);text-align:left;min-height:150px}
+.lp-peek-body .k{color:var(--accent)}.lp-peek-body .v{color:var(--ok)}.lp-peek-body .m{color:var(--warm)}
+
+/* quiet stat line */
+.lp-stats{display:flex;justify-content:center;gap:34px;flex-wrap:wrap;margin:40px auto 0;padding-top:26px;
+  border-top:1px solid var(--line);max-width:680px}
+.lp-stat{text-align:center}
+.lp-stat b{display:block;font-family:var(--serif);font-size:26px;font-weight:500;color:var(--ink)}
+.lp-stat span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+
+/* sections */
+.lp-section{padding:64px 0;border-top:1px solid var(--line)}
+.lp-kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-2);font-weight:600}
+.lp-h2{font-family:var(--serif);font-weight:500;font-size:clamp(26px,3.6vw,36px);letter-spacing:-.01em;margin:12px 0 10px}
+.lp-lead{color:var(--ink-2);max-width:64ch;font-size:16.5px}
+
+.lp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0;margin-top:34px;
+  border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lp-feature{padding:26px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.lp-feature h4{font-weight:600;font-size:16.5px;margin:0 0 8px}
+.lp-feature p{color:var(--ink-2);font-size:14.5px;line-height:1.6;margin:0}
+.lp-ico{width:34px;height:34px;color:var(--accent);margin-bottom:14px}
+.lp-ico svg{width:26px;height:26px}
+
+/* numbered flow */
+.lp-flow{margin-top:34px;border-top:1px solid var(--line)}
+.lp-step{display:grid;grid-template-columns:56px 1fr;gap:18px;padding:22px 0;border-bottom:1px solid var(--line)}
+.lp-step .num{font-family:var(--serif);font-size:30px;color:var(--ink-3);line-height:1}
+.lp-step h4{font-weight:600;font-size:17px;margin:2px 0 5px}
+.lp-step p{color:var(--ink-2);font-size:15px;line-height:1.6;margin:0;max-width:64ch}
+
+/* task table */
+.lp-table{width:100%;border-collapse:collapse;margin-top:28px;font-size:15px}
+.lp-table th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);
+  font-weight:600;padding:11px 14px;border-bottom:1px solid var(--line-2)}
+.lp-table td{padding:13px 14px;border-bottom:1px solid var(--line);color:var(--ink-2)}
+.lp-table td:first-child{color:var(--ink);font-weight:500}
+
+.lp-final{text-align:center;padding:80px 28px;margin:0;background:var(--paper-2);border-top:1px solid var(--line)}
+.lp-final h2{font-family:var(--serif);font-weight:500;font-size:clamp(28px,4.4vw,42px);margin:0 0 22px;letter-spacing:-.01em}
+.lp-foot{max-width:1080px;margin:0 auto;padding:30px 28px;color:var(--ink-3);font-size:13.5px;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid var(--line)}
+.lp-foot a{color:var(--ink-2)}
+
+@media(max-width:820px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .rail-steps{display:flex;gap:8px;overflow-x:auto}
+  .rail-steps::before{display:none}
+  .rstep{grid-template-columns:auto;min-width:72px}
+  .rnode{display:none}
+  .rail-foot{display:none}
+  .lp-feature{border-right:0}
+}
+
+</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="dash">
+    <header class="dash-head">
+      <div>
+        <a href="/" class="brand"><span class="brand-name">AutoDS</span></a>
+        <h1>Results dashboard</h1>
+        <p class="muted">classification on sample_customers.csv, predicting churned,
+        using GradientBoostingClassifier.</p>
+      </div>
+      <button class="btn" onclick="window.print()">Save as PDF</button>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="data">Data analysis</button>
+      <button class="tab" data-tab="model">Model</button>
+      <button class="tab" data-tab="insights">Insights</button>
+    </nav>
+
+    <!-- filter bar (applies to the Data tab) -->
+    <div class="filterbar" id="filterbar" hidden>
+      <span class="fb-label">Filter data by</span>
+      <select id="fCol"><option value="">nothing</option></select>
+      <select id="fVal" disabled><option value="">all</option></select>
+      <button class="btn sm" id="fClear">Clear</button>
+      <span class="fb-count" id="fCount"></span>
+    </div>
+
+    <!-- OVERVIEW -->
+    <section class="panel active" id="p-overview">
+      <div class="kpis">
+        
+        <div class="kpi"><span class="kpi-val">0.842</span>
+          <span class="kpi-label">Accuracy</span></div>
+        
+        <div class="kpi"><span class="kpi-val">0.804</span>
+          <span class="kpi-label">F1 score</span></div>
+        
+        <div class="kpi"><span class="kpi-val">0.694</span>
+          <span class="kpi-label">ROC AUC</span></div>
+        
+        <div class="kpi"><span class="kpi-val">600</span>
+          <span class="kpi-label">Rows</span></div>
+        
+        <div class="kpi"><span class="kpi-val">6</span>
+          <span class="kpi-label">Features</span></div>
+        
+        <div class="kpi"><span class="kpi-val">12</span>
+          <span class="kpi-label">Models compared</span></div>
+        
+      </div>
+      <p class="muted dash-cv">Cross-validated f1_weighted across
+      5 folds is 0.8024 give or take 0.0152.</p>
+      <div class="dash-grid">
+        <div class="card"><h3>Data health</h3>
+          <div class="health"><div class="health-num" id="healthNum"></div>
+            <div class="health-sub" id="healthSub"></div></div></div>
+        <div class="card"><h3>Column types</h3><div class="chart-box"><canvas id="cTypes"></canvas></div></div>
+        <div class="card wide"><h3>Missing values by column</h3>
+          <div class="chart-box"><canvas id="cMissing"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- DATA ANALYSIS -->
+    <section class="panel" id="p-data">
+      <div class="dash-grid">
+        <div class="card"><div class="card-ctrl"><h3>Distribution</h3>
+          <select id="distCol" class="mini"></select></div>
+          <div class="chart-box"><canvas id="cExplore"></canvas></div>
+          <p class="muted" id="distStats"></p></div>
+        <div class="card"><div class="card-ctrl"><h3>Compare to target</h3>
+          <select id="relCol" class="mini"></select></div>
+          <div class="chart-box"><canvas id="cRel"></canvas></div></div>
+        <div class="card wide"><h3>Correlation between numeric columns</h3>
+          <div id="corr" class="corrwrap"></div></div>
+        <div class="card wide"><div class="card-ctrl"><h3>Data table</h3>
+          <span class="muted" id="tableInfo"></span></div>
+          <div class="tablewrap"><table class="dtable" id="dtable"></table></div></div>
+      </div>
+    </section>
+
+    <!-- MODEL -->
+    <section class="panel" id="p-model">
+      <div class="metrics" id="modelMetrics"></div>
+      <div class="dash-grid">
+        <div class="card"><h3>Model leaderboard (f1_weighted)</h3>
+          <div class="chart-box"><canvas id="cLeader"></canvas></div></div>
+        <div class="card"><h3>What drives the prediction</h3>
+          <div class="chart-box"><canvas id="cFeat"></canvas></div></div>
+        <div class="card" id="wConf" hidden><h3>Confusion matrix</h3><div id="confusion"></div></div>
+        <div class="card" id="wScatter" hidden><h3>Predicted vs actual</h3>
+          <div class="chart-box"><canvas id="cScatter"></canvas></div></div>
+        <div class="card wide" id="wSeries" hidden><h3>Forecast vs actual</h3>
+          <div class="chart-box"><canvas id="cSeries"></canvas></div></div>
+        <div class="card" id="wRoc" hidden><h3>ROC curve</h3>
+          <div class="chart-box"><canvas id="cRoc"></canvas></div></div>
+        <div class="card" id="wPr" hidden><h3>Precision and recall curve</h3>
+          <div class="chart-box"><canvas id="cPr"></canvas></div></div>
+        <div class="card" id="wPerClass" hidden><h3>Per-class precision and recall</h3>
+          <div class="chart-box"><canvas id="cPerClass"></canvas></div></div>
+        <div class="card" id="wCv" hidden><h3>Cross-validation folds</h3>
+          <div class="chart-box"><canvas id="cCv"></canvas></div></div>
+        <div class="card" id="wCluster" hidden><h3>Cluster sizes</h3>
+          <div class="chart-box"><canvas id="cCluster"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section class="panel" id="p-insights">
+      <div class="dash-grid">
+        <div class="card wide"><h3>Key findings</h3><ul class="insights" id="findings"></ul></div>
+        <div class="card"><h3>Data checks</h3><ul class="checklist" id="ins-checks"></ul></div>
+        <div class="card"><h3>Grounded guidance</h3><ul class="insights" id="guidance"></ul></div>
+      </div>
+    </section>
+  </div>
+
+<script>
+const D = {"checks": [], "class_dist": {"0": 104, "1": 16}, "cluster_sizes": null, "columns": [{"is_target": false, "name": "age", "type": "numeric"}, {"is_target": false, "name": "income", "type": "numeric"}, {"is_target": false, "name": "tenure_years", "type": "numeric"}, {"is_target": false, "name": "city", "type": "category"}, {"is_target": false, "name": "plan", "type": "category"}, {"is_target": false, "name": "support_calls", "type": "numeric"}, {"is_target": true, "name": "churned", "type": "numeric"}], "confusion": {"labels": ["0", "1"], "matrix": [[100, 4], [15, 1]]}, "cv": {"folds": 5, "mean": 0.8024, "metric": "f1_weighted", "scores": [0.7944, 0.8248, 0.8086, 0.8048, 0.7792], "std": 0.0152}, "dataset": "sample_customers.csv", "features": [{"name": "income", "value": 0.3489}, {"name": "age", "value": 0.2723}, {"name": "tenure years", "value": 0.1693}, {"name": "support calls", "value": 0.1044}, {"name": "city Denver", "value": 0.0292}, {"name": "plan Basic", "value": 0.0274}, {"name": "plan Standard", "value": 0.0166}, {"name": "city Boston", "value": 0.0111}, {"name": "city Miami", "value": 0.0072}, {"name": "city Seattle", "value": 0.0056}, {"name": "city Austin", "value": 0.0041}, {"name": "plan Premium", "value": 0.0038}], "insights": {"findings": ["Dataset has 600 rows and 7 columns (5 numeric, 2 categorical).", "3 column(s) have missing data; \u0027income\u0027 is worst at 8.0%.", "Target \u0027churned\u0027 has 2 distinct values \u2192 classification (imbalanced).", "Target is imbalanced \u2014 \u00270\u0027 is 87% of rows; consider class weighting or resampling.", "GradientBoostingClassifier reached 0.842 accuracy (F1 0.804) on the held-out test set.", "ROC-AUC of 0.694 indicates moderate class separation.", "Most influential features: \u0027num__income\u0027, \u0027num__age\u0027, \u0027num__tenure_years\u0027.", "Next steps: try hyperparameter tuning, cross-validation, and compare against the other recommended models."], "guidance": ["Why data is missing matters \u00b7 Missing values are not always random. If a value is missing for a reason related to the outcome, imputing it can hide signal or add bias. It is worth adding a simple was-missing flag column so the model can use the fact that a value was absent.", "Handling missing data \u00b7 Impute numeric columns with the median, which is robust to outliers, and categoricals with the most frequent value. Columns missing more than half their values are usually better dropped. Fit any imputer on the training split only, never the whole dataset, to avoid leakage.", "Past run: classification on sample_customers.csv with GradientBoostingClassifier \u00b7 A classification task on sample_customers.csv trained GradientBoostingClassifier and scored accuracy=0.842, precision=0.78, recall=0.842, f1=0.804, roc_auc=0.694."]}, "kpis": [{"label": "Accuracy", "value": 0.842}, {"label": "F1 score", "value": 0.804}, {"label": "ROC AUC", "value": 0.694}, {"label": "Rows", "value": 600}, {"label": "Features", "value": 6}, {"label": "Models compared", "value": 12}], "leaderboard": [{"name": "GaussianNB", "score": 0.8378}, {"name": "AdaBoostClassifier", "score": 0.8189}, {"name": "LogisticRegression", "score": 0.8184}, {"name": "MLPClassifier", "score": 0.818}, {"name": "LGBMClassifier", "score": 0.8176}, {"name": "KNeighborsClassifier", "score": 0.8173}, {"name": "RandomForestClassifier", "score": 0.812}, {"name": "ExtraTreesClassifier", "score": 0.8054}, {"name": "RidgeClassifier", "score": 0.8048}, {"name": "SVC", "score": 0.8048}, {"name": "GradientBoostingClassifier", "score": 0.8024}, {"name": "DecisionTreeClassifier", "score": 0.787}], "leaderboard_metric": "f1_weighted", "metrics": {"accuracy": 0.842, "f1": 0.804, "precision": 0.78, "recall": 0.842, "roc_auc": 0.694}, "model": "GradientBoostingClassifier", "per_class": [{"f1": 0.913, "label": "0", "precision": 0.87, "recall": 0.962, "support": 104}, {"f1": 0.095, "label": "1", "precision": 0.2, "recall": 0.062, "support": 16}], "pr": {"precision": [0.1333, 0.1356, 0.1379, 0.1404, 0.1429, 0.1455, 0.1481, 0.1509, 0.1538, 0.1569, 0.16, 0.1633, 0.1667, 0.1702, 0.1739, 0.1667, 0.1705, 0.1744, 0.1786, 0.1829, 0.1875, 0.1795, 0.1711, 0.1757, 0.1806, 0.1857, 0.1912, 0.197, 0.2031, 0.2097, 0.2034, 0.1754, 0.1818, 0.1887, 0.1765, 0.1837, 0.1915, 0.2, 0.2093, 0.1951, 0.2051, 0.2162, 0.2286, 0.2424, 0.2258, 0.2414, 0.2593, 0.24, 0.2609, 0.2857, 0.3158, 0.2941, 0.2667, 0.2308, 0.2727, 0.3333, 0.2857, 0.2, 0.3333, 1.0], "recall": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.9375, 0.9375, 0.9375, 0.9375, 0.9375, 0.9375, 0.875, 0.8125, 0.8125, 0.8125, 0.8125, 0.8125, 0.8125, 0.8125, 0.8125, 0.75, 0.625, 0.625, 0.625, 0.5625, 0.5625, 0.5625, 0.5625, 0.5625, 0.5, 0.5, 0.5, 0.5, 0.5, 0.4375, 0.4375, 0.4375, 0.375, 0.375, 0.375, 0.375, 0.3125, 0.25, 0.1875, 0.1875, 0.1875, 0.125, 0.0625, 0.0625, 0.0]}, "profile": {"completeness": 97.6, "duplicates": 0, "memory_kb": 96.9, "missing": {"labels": ["income", "city", "age"], "values": [48, 30, 24]}, "n_cols": 7, "n_rows": 600, "type_split": {"categorical": 2, "numeric": 5}}, "roc": {"fpr": [0.0, 0.0096, 0.0096, 0.0385, 0.0385, 0.0481, 0.0481, 0.0962, 0.0962, 0.1058, 0.1058, 0.1154, 0.1154, 0.1827, 0.1827, 0.2308, 0.2308, 0.3269, 0.3269, 0.4135, 0.4135, 0.4519, 0.4519, 0.4615, 0.4615, 0.6154, 0.6154, 0.625, 0.625, 0.7212, 0.7212, 1.0], "tpr": [0.0, 0.0, 0.0625, 0.0625, 0.125, 0.125, 0.1875, 0.1875, 0.25, 0.25, 0.3125, 0.3125, 0.375, 0.375, 0.4375, 0.4375, 0.5, 0.5, 0.5625, 0.5625, 0.625, 0.625, 0.75, 0.75, 0.8125, 0.8125, 0.875, 0.875, 0.9375, 0.9375, 1.0, 1.0]}, "rows": [[44.0, 65800.0, 6, "Miami", "Basic", 1, 0], [28.0, 38300.0, 3, "Miami", "Standard", 2, 0], [49.0, 79400.0, 1, "Miami", "Standard", 2, 1], [51.0, 58400.0, 6, "Denver", "Premium", 2, 0], [18.0, 28600.0, 7, "Miami", "Premium", 1, 0], [24.0, 48100.0, 2, "Austin", "Standard", 0, 0], [42.0, 67000.0, 1, "Denver", "Standard", 3, 0], [36.0, 57800.0, 2, "Austin", "Premium", 6, 0], [40.0, null, 9, "Seattle", "Basic", 1, 0], [30.0, null, 12, "Denver", "Premium", 1, 1], [51.0, 53500.0, 2, "Austin", "Basic", 5, 1], [49.0, 66900.0, 4, "Miami", "Premium", 2, 0], [41.0, null, 5, "Denver", "Standard", 3, 0], [54.0, null, 5, "Denver", "Basic", 1, 1], [46.0, 51700.0, 3, "Austin", "Standard", 0, 0], [30.0, 31600.0, 0, "Denver", "Basic", 0, 0], [44.0, 68200.0, 7, "Denver", "Standard", 2, 0], [28.0, 48100.0, 5, "Denver", "Standard", 4, 0], [51.0, 58500.0, 5, "Austin", "Standard", 1, 0], [39.0, 72500.0, 3, "Miami", "Premium", 5, 0], [38.0, 48900.0, 13, "Boston", "Basic", 4, 0], [32.0, 49200.0, 9, "Seattle", "Basic", 1, 0], [null, 72700.0, 6, "Seattle", "Standard", 1, 0], [38.0, 46800.0, 3, "Boston", "Basic", 1, 1], [35.0, 57200.0, 12, "Boston", "Standard", 1, 0], [36.0, 46000.0, 13, "Seattle", "Basic", 2, 0], [46.0, 56500.0, 0, "Boston", "Basic", 0, 0], [44.0, 76000.0, 13, null, "Standard", 2, 0], [45.0, 48000.0, 10, null, "Premium", 2, 0], [45.0, 31500.0, 1, "Seattle", "Basic", 1, 1], [null, 98700.0, 11, "Austin", "Premium", 4, 0], [35.0, 82100.0, 1, "Austin", "Standard", 2, 0], [34.0, 45700.0, 0, "Seattle", "Basic", 3, 0], [30.0, 23800.0, 1, "Seattle", "Standard", 2, 0], [47.0, 58600.0, 6, "Denver", "Standard", 1, 0], [54.0, 65200.0, 9, "Seattle", "Basic", 3, 0], [39.0, 52800.0, 6, "Seattle", "Standard", 1, 0], [30.0, 33600.0, 1, "Miami", "Basic", 1, 1], [30.0, 54000.0, 2, "Austin", "Basic", 2, 0], [48.0, 69500.0, 12, "Austin", "Standard", 2, 0], [49.0, 46200.0, 14, "Miami", "Standard", 5, 0], [47.0, 70700.0, 11, "Miami", "Premium", 2, 0], [32.0, 73400.0, 1, "Boston", "Basic", 0, 0], [43.0, 60800.0, 12, "Boston", "Premium", 1, 0], [41.0, 52900.0, 10, "Boston", "Standard", 3, 0], [43.0, 57000.0, 7, "Denver", "Premium", 2, 0], [null, 72400.0, 2, "Denver", "Premium", 1, 0], [43.0, 37900.0, 14, "Denver", "Basic", 1, 0], [48.0, 65200.0, 6, "Seattle", "Standard", 2, 0], [41.0, null, 0, "Boston", "Basic", 1, 1], [43.0, 80900.0, 3, "Denver", "Premium", 2, 1], [48.0, 61100.0, 6, "Seattle", "Standard", 1, 0], [23.0, 60700.0, 0, "Denver", "Basic", 1, 0], [36.0, 39200.0, 4, "Austin", "Premium", 0, 0], [34.0, 57600.0, 7, "Austin", "Basic", 2, 0], [32.0, 52600.0, 14, "Austin", "Standard", 2, 0], [37.0, 42900.0, 1, "Boston", "Standard", 2, 0], [58.0, 74300.0, 8, "Denver", "Basic", 3, 0], [30.0, 61600.0, 13, "Miami", "Standard", 4, 0], [52.0, 62900.0, 12, "Seattle", "Premium", 3, 0], [20.0, 17700.0, 13, "Austin", "Basic", 3, 0], [36.0, 52200.0, 2, "Austin", "Standard", 2, 1], [42.0, 47000.0, 12, "Miami", "Basic", 2, 0], [47.0, 58200.0, 14, "Denver", "Standard", 1, 0], [49.0, 63100.0, 4, "Boston", "Basic", 0, 0], [50.0, null, 7, "Austin", "Premium", 3, 0], [36.0, 33000.0, 7, "Seattle", "Premium", 2, 0], [34.0, 56400.0, 7, "Miami", "Basic", 4, 1], [50.0, 58700.0, 4, "Austin", "Basic", 0, 0], [38.0, 23400.0, 14, "Denver", "Standard", 1, 0], [25.0, null, 14, "Boston", "Standard", 3, 0], [26.0, 46700.0, 5, null, "Standard", 1, 0], [29.0, 37500.0, 12, null, "Basic", 4, 0], [46.0, 45600.0, 5, "Denver", "Basic", 1, 1], [42.0, 67800.0, 11, "Denver", "Premium", 3, 0], [48.0, 67400.0, 8, "Miami", "Standard", 0, 0], [35.0, 80100.0, 7, "Miami", "Premium", 4, 1], [42.0, 62800.0, 1, "Denver", "Standard", 2, 0], [48.0, 67900.0, 9, "Miami", "Premium", 1, 0], [36.0, 50400.0, 4, "Austin", "Basic", 1, 0], [45.0, 70300.0, 3, "Austin", "Basic", 2, 0], [32.0, 56300.0, 2, "Seattle", "Premium", 5, 1], [36.0, 67400.0, 14, "Boston", "Premium", 3, 0], [35.0, 45200.0, 1, "Austin", "Basic", 1, 0], [26.0, 38200.0, 11, "Austin", "Basic", 1, 0], [46.0, 55700.0, 12, "Seattle", "Standard", 1, 0], [34.0, 60100.0, 0, "Miami", "Standard", 3, 1], [40.0, 74000.0, 8, "Austin", "Basic", 3, 0], [46.0, 55900.0, 8, "Denver", "Premium", 2, 0], [45.0, 55400.0, 5, "Miami", "Basic", 2, 0], [48.0, 67000.0, 10, "Denver", "Standard", 1, 0], [39.0, 52200.0, 6, "Austin", "Basic", 2, 0], [35.0, 62900.0, 6, "Austin", "Basic", 0, 0], [39.0, 28100.0, 6, "Denver", "Standard", 4, 0], [20.0, 28100.0, 12, "Seattle", "Basic", 3, 0], [23.0, 31300.0, 9, "Boston", "Standard", 1, 0], [24.0, null, 5, "Seattle", "Basic", 3, 0], [28.0, 33600.0, 13, "Seattle", "Premium", 1, 0], [45.0, 49500.0, 12, "Boston", "Standard", 3, 0], [29.0, 43700.0, 13, "Denver", "Premium", 1, 0], [35.0, 64900.0, 10, "Denver", "Basic", 1, 0], [56.0, null, 5, "Boston", "Basic", 3, 0], [36.0, 40000.0, 11, "Austin", "Basic", 1, 0], [49.0, 63400.0, 4, null, "Standard", 3, 0], [29.0, 58700.0, 4, "Miami", "Basic", 5, 0], [38.0, 42500.0, 6, "Austin", "Basic", 1, 0], [29.0, 35200.0, 14, "Seattle", "Basic", 4, 0], [36.0, 59100.0, 8, "Austin", "Basic", 1, 0], [50.0, 62300.0, 5, "Austin", "Basic", 2, 0], [19.0, 44900.0, 6, "Seattle", "Basic", 2, 0], [45.0, 60300.0, 4, "Denver", "Basic", 2, 0], [43.0, 67100.0, 9, "Miami", "Standard", 2, 0], [33.0, 37300.0, 5, "Boston", "Basic", 6, 0], [23.0, 40600.0, 8, "Miami", "Basic", 2, 0], [41.0, 54400.0, 5, "Denver", "Standard", 0, 0], [34.0, 36000.0, 4, null, "Standard", 3, 0], [43.0, 39900.0, 14, "Denver", "Basic", 1, 0], [40.0, 64200.0, 5, "Austin", "Standard", 7, 1], [59.0, 68900.0, 1, "Boston", "Premium", 0, 0], [37.0, 41000.0, 5, "Denver", "Standard", 1, 0], [28.0, 44000.0, 7, "Austin", "Premium", 2, 0], [42.0, 71300.0, 1, "Miami", "Standard", 4, 0], [43.0, 31300.0, 4, "Denver", "Basic", 1, 0], [56.0, 52400.0, 2, "Austin", "Standard", 2, 0], [50.0, 53900.0, 7, "Austin", "Standard", 3, 0], [44.0, 77100.0, 10, "Seattle", "Premium", 1, 0], [58.0, 75600.0, 14, "Miami", "Standard", 1, 0], [26.0, null, 5, "Austin", "Basic", 1, 0], [32.0, 35100.0, 12, "Boston", "Standard", 2, 0], [29.0, 32700.0, 3, "Boston", "Basic", 1, 1], [35.0, 56900.0, 11, "Miami", "Standard", 0, 0], [null, 41400.0, 8, "Austin", "Standard", 4, 0], [48.0, null, 11, "Austin", "Standard", 0, 0], [37.0, 51000.0, 11, "Boston", "Premium", 3, 0], [22.0, 43100.0, 7, "Denver", "Standard", 2, 0], [28.0, 47100.0, 3, "Seattle", "Standard", 2, 0], [44.0, 68900.0, 7, "Miami", "Standard", 5, 0], [50.0, 74700.0, 12, "Austin", "Premium", 0, 0], [64.0, 58200.0, 14, "Miami", "Premium", 2, 0], [75.0, 60500.0, 13, "Boston", "Basic", 1, 0], [45.0, 72500.0, 2, "Miami", "Standard", 0, 0], [28.0, 59500.0, 8, "Denver", "Basic", 0, 0], [18.0, 24000.0, 1, "Boston", "Premium", 4, 1], [43.0, 36400.0, 10, "Seattle", "Standard", 3, 0], [30.0, 48200.0, 14, "Miami", "Standard", 1, 0], [35.0, 62700.0, 0, null, "Basic", 6, 1], [33.0, 71300.0, 9, "Miami", "Basic", 2, 0], [38.0, 60400.0, 14, null, "Standard", 2, 0], [53.0, 63200.0, 12, "Austin", "Basic", 1, 0], [42.0, 47100.0, 5, "Austin", "Basic", 0, 0], [38.0, 54300.0, 1, "Seattle", "Premium", 0, 1], [28.0, 41600.0, 13, "Seattle", "Standard", 2, 0], [null, 25800.0, 13, "Seattle", "Basic", 1, 1], [34.0, 75200.0, 8, "Denver", "Basic", 0, 0], [39.0, 76500.0, 14, "Miami", "Premium", 3, 0], [61.0, 88500.0, 0, "Boston", "Standard", 1, 0], [42.0, 46700.0, 9, "Austin", "Standard", 2, 0], [52.0, 77100.0, 0, "Miami", "Basic", 5, 1], [34.0, 58300.0, 14, "Seattle", "Basic", 0, 0], [26.0, 48700.0, 10, "Seattle", "Basic", 0, 0], [28.0, 60200.0, 13, "Austin", "Standard", 0, 0], [31.0, 55500.0, 8, "Miami", "Basic", 3, 1], [66.0, 88300.0, 1, "Boston", "Basic", 1, 1], [30.0, 54600.0, 0, "Miami", "Standard", 1, 0], [50.0, 69100.0, 5, "Boston", "Premium", 1, 0], [null, 24700.0, 11, "Boston", "Standard", 3, 0], [51.0, 66900.0, 2, "Denver", "Standard", 1, 0], [45.0, 53800.0, 12, "Seattle", "Standard", 1, 0], [38.0, null, 3, "Seattle", "Standard", 3, 1], [40.0, null, 7, "Boston", "Basic", 1, 0], [32.0, 69500.0, 3, "Austin", "Standard", 1, 0], [45.0, 76800.0, 6, "Denver", "Standard", 2, 0], [35.0, 54600.0, 6, "Boston", "Standard", 4, 1], [25.0, 58700.0, 0, null, "Premium", 0, 0], [25.0, 42600.0, 8, "Miami", "Premium", 4, 0], [42.0, 60200.0, 11, "Denver", "Basic", 3, 0], [59.0, 60000.0, 14, "Boston", "Basic", 0, 0], [42.0, 62600.0, 4, null, "Basic", 1, 0], [39.0, 55800.0, 13, "Denver", "Basic", 2, 0], [43.0, 43100.0, 13, "Miami", "Basic", 0, 0], [56.0, 69800.0, 14, "Denver", "Basic", 1, 0], [43.0, 57700.0, 5, "Seattle", "Standard", 2, 1], [35.0, 73100.0, 12, "Seattle", "Standard", 3, 0], [53.0, 78400.0, 8, "Miami", "Premium", 6, 0], [45.0, 60600.0, 0, "Austin", "Basic", 2, 1], [58.0, 75200.0, 4, "Austin", "Basic", 1, 1], [null, 58300.0, 10, "Miami", "Standard", 1, 0], [25.0, 40100.0, 2, "Seattle", "Basic", 1, 1], [24.0, 28600.0, 6, "Seattle", "Basic", 2, 0], [60.0, 72200.0, 11, "Austin", "Premium", 2, 0], [null, 65900.0, 2, "Denver", "Basic", 3, 1], [38.0, null, 7, "Boston", "Basic", 3, 0], [35.0, 57600.0, 3, "Austin", "Standard", 2, 0], [58.0, 76900.0, 8, "Denver", "Standard", 2, 0], [27.0, 22900.0, 3, null, "Standard", 0, 0], [null, 44600.0, 14, "Austin", "Basic", 0, 0], [null, 75100.0, 1, "Miami", "Premium", 1, 0], [35.0, 64200.0, 14, "Denver", "Basic", 4, 0], [40.0, 68300.0, 11, "Boston", "Standard", 0, 0], [38.0, 54700.0, 12, "Miami", "Standard", 1, 0], [44.0, 49500.0, 12, "Boston", "Premium", 0, 0], [57.0, 58300.0, 2, "Austin", "Basic", 1, 0], [41.0, null, 13, "Seattle", "Standard", 4, 0], [48.0, null, 8, "Miami", "Basic", 3, 0], [18.0, 51600.0, 14, "Austin", "Basic", 2, 0], [39.0, 68300.0, 13, "Austin", "Basic", 1, 0], [30.0, null, 8, "Austin", "Standard", 3, 0], [25.0, 27600.0, 5, "Boston", "Basic", 3, 0], [29.0, 42300.0, 1, "Miami", "Standard", 0, 0], [36.0, 55000.0, 1, "Seattle", "Basic", 4, 0], [51.0, 63500.0, 5, "Miami", "Premium", 1, 0], [24.0, 34700.0, 12, "Seattle", "Premium", 0, 0], [40.0, 59000.0, 7, null, "Basic", 0, 0], [34.0, 44600.0, 7, "Denver", "Basic", 2, 1], [36.0, 44900.0, 3, "Seattle", "Basic", 3, 1], [52.0, 70500.0, 8, "Austin", "Premium", 1, 0], [46.0, 56600.0, 9, "Boston", "Basic", 2, 0], [56.0, 73300.0, 14, "Miami", "Standard", 3, 0], [38.0, 57500.0, 10, "Denver", "Standard", 2, 0], [32.0, 35100.0, 9, "Seattle", "Standard", 2, 0], [37.0, 47500.0, 13, "Austin", "Standard", 1, 0], [43.0, 76000.0, 6, "Boston", "Standard", 3, 0], [42.0, 43900.0, 14, "Boston", "Premium", 3, 0], [27.0, 18900.0, 5, "Boston", "Basic", 4, 0], [41.0, 34600.0, 1, "Denver", "Premium", 1, 0], [43.0, 59000.0, 6, "Austin", "Basic", 1, 0], [70.0, 83400.0, 1, "Austin", "Standard", 2, 0], [63.0, 75300.0, 1, "Austin", "Premium", 0, 0], [30.0, 61600.0, 13, "Austin", "Standard", 2, 0], [37.0, 21200.0, 11, "Austin", "Standard", 6, 0], [22.0, 44600.0, 3, "Boston", "Basic", 1, 0], [33.0, 68400.0, 12, "Austin", "Standard", 1, 0], [44.0, 46100.0, 1, "Austin", "Basic", 1, 0], [54.0, 64000.0, 4, "Miami", "Standard", 1, 1], [31.0, 38900.0, 10, "Seattle", "Standard", 2, 0], [32.0, 38100.0, 4, "Miami", "Basic", 4, 0], [18.0, 32300.0, 10, "Seattle", "Basic", 1, 0], [38.0, 71300.0, 13, "Boston", "Basic", 0, 0], [27.0, 66300.0, 0, null, "Basic", 6, 1], [34.0, 46600.0, 0, "Seattle", "Basic", 0, 0], [29.0, 69000.0, 14, "Miami", "Premium", 2, 0], [39.0, 55500.0, 7, "Denver", "Standard", 0, 0], [19.0, 58100.0, 7, "Denver", "Basic", 2, 0], [22.0, 38700.0, 6, "Seattle", "Standard", 0, 0], [66.0, 81000.0, 6, "Austin", "Premium", 2, 0], [25.0, 46900.0, 10, "Miami", "Basic", 4, 0], [27.0, 82400.0, 8, "Denver", "Basic", 1, 1], [62.0, 86000.0, 2, "Austin", "Basic", 0, 1], [75.0, 79000.0, 9, "Austin", "Basic", 4, 0], [26.0, 55000.0, 10, "Miami", "Standard", 3, 0], [36.0, null, 1, "Denver", "Premium", 3, 1], [44.0, null, 5, "Seattle", "Basic", 1, 0], [61.0, 85800.0, 11, "Boston", "Standard", 3, 0], [28.0, 45600.0, 9, "Austin", "Basic", 2, 1], [37.0, 56600.0, 2, "Miami", "Standard", 5, 1], [49.0, 64300.0, 0, "Denver", "Standard", 5, 0], [45.0, 64500.0, 8, "Austin", "Basic", 1, 0], [35.0, 56600.0, 6, "Seattle", "Basic", 1, 0], [38.0, 31000.0, 14, "Boston", "Standard", 2, 0], [24.0, 49600.0, 7, "Denver", "Premium", 5, 1], [37.0, 41500.0, 13, "Seattle", "Basic", 1, 0], [37.0, 36000.0, 3, "Denver", "Basic", 3, 1], [43.0, null, 6, "Seattle", "Basic", 4, 0], [33.0, 50700.0, 2, "Seattle", "Standard", 5, 0], [46.0, 53100.0, 8, "Seattle", "Standard", 4, 0], [52.0, 76800.0, 2, "Seattle", "Standard", 2, 0], [42.0, 41700.0, 7, "Austin", "Standard", 0, 0], [44.0, 54700.0, 5, "Seattle", "Premium", 1, 1], [41.0, 49900.0, 2, "Seattle", "Premium", 1, 0], [40.0, 55400.0, 1, "Seattle", "Basic", 0, 0], [31.0, 51200.0, 7, "Austin", "Standard", 1, 0], [44.0, 47500.0, 14, "Denver", "Basic", 2, 0], [39.0, 63800.0, 2, "Denver", "Basic", 1, 0], [65.0, 79300.0, 6, "Austin", "Premium", 3, 0], [59.0, 50400.0, 3, "Austin", "Standard", 1, 0], [45.0, 37000.0, 12, "Denver", "Premium", 3, 0], [31.0, 47800.0, 6, "Miami", "Standard", 4, 0], [27.0, 41600.0, 14, "Austin", "Standard", 2, 0], [54.0, 67400.0, 3, "Miami", "Standard", 4, 0], [43.0, 58400.0, 1, "Seattle", "Basic", 3, 0], [46.0, 64100.0, 8, "Miami", "Basic", 3, 0], [19.0, 48500.0, 9, "Seattle", "Standard", 1, 1], [51.0, 52600.0, 14, "Seattle", "Basic", 2, 0], [45.0, 46400.0, 13, "Seattle", "Premium", 2, 1], [27.0, 31200.0, 13, "Boston", "Basic", 1, 0], [34.0, 54100.0, 9, "Seattle", "Basic", 5, 0], [43.0, 73600.0, 5, null, "Standard", 3, 1], [null, 51700.0, 6, "Seattle", "Basic", 3, 0], [36.0, 22400.0, 2, "Miami", "Premium", 0, 0], [39.0, 34700.0, 6, "Austin", "Standard", 5, 0], [37.0, 43300.0, 5, null, "Basic", 0, 0], [42.0, 51100.0, 0, "Seattle", "Standard", 1, 0], [58.0, 67300.0, 3, "Boston", "Standard", 1, 0], [18.0, 36700.0, 8, "Seattle", "Standard", 1, 0], [37.0, 49600.0, 5, "Seattle", "Premium", 1, 0], [42.0, 70400.0, 14, "Boston", "Standard", 2, 0], [44.0, 51500.0, 7, "Seattle", "Standard", 4, 0], [36.0, 42100.0, 14, "Austin", "Basic", 3, 0], [19.0, 42800.0, 9, "Austin", "Standard", 4, 0], [44.0, null, 0, "Austin", "Premium", 2, 0], [61.0, 79600.0, 3, "Austin", "Standard", 0, 1], [22.0, 41000.0, 10, "Denver", "Standard", 4, 0], [50.0, 63200.0, 8, "Miami", "Standard", 3, 0], [36.0, 71500.0, 4, "Miami", "Standard", 1, 0], [39.0, 47600.0, 7, "Austin", "Premium", 2, 0], [27.0, 69000.0, 13, "Seattle", "Basic", 2, 0], [36.0, 49700.0, 5, "Austin", "Basic", 2, 0], [56.0, 55100.0, 0, "Boston", "Standard", 1, 0], [47.0, 63100.0, 4, "Austin", "Standard", 1, 0], [61.0, 62000.0, 14, "Seattle", "Standard", 0, 0], [54.0, 59600.0, 11, "Denver", "Basic", 1, 0], [45.0, 65300.0, 12, "Seattle", "Standard", 1, 0], [61.0, null, 13, "Denver", "Standard", 3, 0], [45.0, 53000.0, 1, "Miami", "Standard", 1, 0], [50.0, 76800.0, 4, "Austin", "Standard", 1, 0], [36.0, 66300.0, 0, "Boston", "Standard", 2, 0], [41.0, 74100.0, 0, "Seattle", "Standard", 2, 0], [32.0, 55200.0, 12, "Miami", "Standard", 3, 0], [52.0, 83200.0, 14, "Miami", "Standard", 1, 0], [26.0, 20800.0, 2, "Boston", "Standard", 1, 0], [49.0, 60300.0, 10, "Austin", "Standard", 2, 0], [38.0, 43800.0, 8, "Denver", "Basic", 0, 0], [54.0, null, 1, "Denver", "Basic", 3, 0], [49.0, 57200.0, 13, "Denver", "Standard", 0, 0], [62.0, 73800.0, 13, "Seattle", "Premium", 1, 1], [49.0, 86700.0, 8, "Boston", "Standard", 3, 0], [21.0, 36900.0, 10, "Boston", "Basic", 0, 0], [null, 60100.0, 5, "Seattle", "Standard", 0, 0], [null, 40600.0, 11, "Seattle", "Basic", 2, 0], [34.0, 51500.0, 6, "Boston", "Standard", 2, 0], [58.0, 72300.0, 14, "Boston", "Premium", 1, 0], [48.0, 68600.0, 0, "Austin", "Standard", 6, 0], [32.0, 62800.0, 2, "Seattle", "Standard", 6, 0], [28.0, 65000.0, 14, "Miami", "Basic", 4, 0], [40.0, 59700.0, 4, "Denver", "Standard", 3, 0], [25.0, 49600.0, 4, "Denver", "Premium", 4, 1], [32.0, 35000.0, 11, "Boston", "Standard", 4, 0], [44.0, null, 2, "Boston", "Standard", 1, 0], [54.0, 79900.0, 7, "Boston", "Basic", 2, 0], [47.0, 72700.0, 4, "Miami", "Basic", 3, 0], [18.0, 38700.0, 2, "Denver", "Basic", 1, 0], [44.0, 70200.0, 14, "Denver", "Basic", 3, 0], [41.0, 62800.0, 2, "Seattle", "Basic", 1, 0], [45.0, null, 1, "Seattle", "Premium", 2, 0], [59.0, 76600.0, 10, "Seattle", "Standard", 2, 0], [18.0, 31900.0, 13, "Seattle", "Basic", 1, 0], [33.0, 53700.0, 1, "Denver", "Basic", 3, 1], [null, 27100.0, 10, "Miami", "Basic", 6, 1], [21.0, 43500.0, 8, "Denver", "Premium", 1, 0], [58.0, 28400.0, 12, "Denver", "Basic", 2, 0], [44.0, 38900.0, 1, "Austin", "Standard", 3, 0], [50.0, 70400.0, 14, "Austin", "Premium", 2, 0], [33.0, 55400.0, 9, null, "Basic", 2, 0], [50.0, 51100.0, 12, "Denver", "Standard", 1, 0], [53.0, 59200.0, 5, "Austin", "Premium", 1, 0], [43.0, null, 14, "Miami", "Standard", 4, 0], [43.0, 52900.0, 9, "Seattle", "Basic", 0, 0], [43.0, 85600.0, 1, "Austin", "Premium", 1, 0], [30.0, 47000.0, 13, "Denver", "Premium", 1, 0], [38.0, 59100.0, 11, "Austin", "Standard", 1, 0], [38.0, 73600.0, 4, "Seattle", "Standard", 4, 0], [null, 62100.0, 8, "Denver", "Basic", 1, 0], [52.0, 54800.0, 5, "Austin", "Premium", 2, 0], [27.0, null, 8, "Austin", "Standard", 3, 1], [38.0, null, 14, "Seattle", "Basic", 2, 0], [58.0, 55800.0, 13, "Austin", "Standard", 2, 0], [31.0, 44800.0, 3, "Miami", "Premium", 3, 0], [30.0, 38100.0, 14, "Austin", "Premium", 2, 1], [42.0, 68900.0, 6, "Seattle", "Basic", 1, 0], [50.0, 65400.0, 10, null, "Basic", 1, 0], [40.0, 52600.0, 11, "Denver", "Premium", 3, 0], [56.0, 69100.0, 7, "Austin", "Premium", 5, 0], [50.0, 67700.0, 6, "Miami", "Standard", 1, 0], [50.0, 72400.0, 6, null, "Standard", 1, 0], [47.0, 50300.0, 12, "Austin", "Standard", 2, 0], [68.0, 68700.0, 5, "Austin", "Standard", 2, 0], [38.0, 67500.0, 4, null, "Basic", 1, 0], [18.0, 31300.0, 5, "Seattle", "Basic", 1, 0], [59.0, 56100.0, 2, "Austin", "Basic", 3, 0], [35.0, 56800.0, 5, "Austin", "Premium", 2, 0], [41.0, 62500.0, 1, "Seattle", "Basic", 2, 1], [56.0, 52000.0, 1, "Miami", "Basic", 0, 0], [21.0, 41700.0, 10, "Seattle", "Standard", 0, 0], [25.0, 51300.0, 1, "Boston", "Basic", 2, 0], [21.0, 43400.0, 8, "Seattle", "Basic", 1, 0], [30.0, 54600.0, 11, "Denver", "Standard", 4, 0], [45.0, 43600.0, 10, "Seattle", "Basic", 1, 0], [46.0, 65400.0, 6, "Denver", "Standard", 4, 0], [43.0, null, 2, "Austin", "Premium", 4, 0], [23.0, 34900.0, 13, "Austin", "Basic", 1, 0], [18.0, 46600.0, 12, "Denver", "Premium", 0, 0], [41.0, 74700.0, 9, "Miami", "Premium", 1, 0], [34.0, 72100.0, 1, "Austin", "Premium", 3, 0], [46.0, 77200.0, 0, "Denver", "Standard", 5, 0], [48.0, 61900.0, 4, "Seattle", "Standard", 3, 0], [42.0, 62000.0, 2, "Seattle", "Standard", 2, 1], [49.0, 73300.0, 12, "Miami", "Standard", 2, 0], [43.0, 60200.0, 3, "Miami", "Basic", 3, 0], [46.0, 63000.0, 4, "Miami", "Premium", 3, 0], [32.0, 58700.0, 14, "Austin", "Standard", 4, 0], [38.0, 53500.0, 12, "Seattle", "Standard", 1, 0], [42.0, 49000.0, 3, "Seattle", "Basic", 2, 0], [50.0, 60000.0, 5, "Austin", "Basic", 0, 0], [35.0, 59100.0, 7, "Austin", "Standard", 0, 0], [46.0, null, 9, "Austin", "Standard", 1, 0], [37.0, 57400.0, 14, "Seattle", "Standard", 1, 0], [39.0, 63100.0, 13, "Denver", "Basic", 2, 0], [50.0, 60500.0, 14, "Austin", "Basic", 2, 0], [18.0, 45300.0, 0, "Miami", "Standard", 3, 0], [24.0, 46100.0, 3, "Boston", "Basic", 3, 0], [22.0, 25000.0, 8, "Austin", "Premium", 1, 0], [18.0, 53500.0, 0, "Boston", "Basic", 0, 1], [32.0, 42800.0, 5, "Austin", "Basic", 2, 0], [null, 44200.0, 2, "Boston", "Basic", 0, 0], [37.0, 40800.0, 13, "Boston", "Standard", 1, 0], [42.0, 45500.0, 0, "Austin", "Standard", 1, 0], [53.0, 68300.0, 2, "Miami", "Standard", 2, 1], [56.0, 67100.0, 2, "Boston", "Premium", 1, 0], [39.0, 51100.0, 2, null, "Basic", 1, 1], [56.0, 77800.0, 8, "Boston", "Standard", 1, 0], [41.0, null, 5, "Seattle", "Basic", 1, 0], [30.0, 50800.0, 13, null, "Basic", 2, 0], [33.0, 54600.0, 3, "Miami", "Standard", 1, 0], [22.0, 47200.0, 8, null, "Basic", 1, 0], [29.0, 20800.0, 9, "Seattle", "Standard", 4, 0], [36.0, 48000.0, 9, "Denver", "Standard", 1, 0], [50.0, 38800.0, 11, "Seattle", "Standard", 0, 0], [61.0, 75300.0, 3, "Austin", "Standard", 0, 0], [23.0, 40600.0, 7, "Miami", "Standard", 2, 0], [45.0, 73000.0, 12, "Austin", "Basic", 3, 0], [28.0, null, 12, "Miami", "Basic", 1, 0], [46.0, 63800.0, 9, "Miami", "Basic", 1, 0], [38.0, 48200.0, 9, "Seattle", "Standard", 1, 0], [18.0, 42000.0, 12, "Seattle", "Premium", 1, 0], [51.0, 59600.0, 9, null, "Basic", 1, 0], [33.0, 49700.0, 14, "Boston", "Standard", 2, 0], [null, 62400.0, 1, "Miami", "Standard", 1, 0], [27.0, 37600.0, 5, "Denver", "Premium", 2, 0], [32.0, 58500.0, 1, "Austin", "Standard", 5, 1], [45.0, 68600.0, 1, "Austin", "Standard", 3, 0], [38.0, 42700.0, 7, "Seattle", "Standard", 2, 0], [44.0, 71300.0, 3, "Boston", "Premium", 1, 0], [44.0, 68000.0, 6, null, "Basic", 3, 0], [56.0, 71600.0, 6, "Austin", "Premium", 1, 0], [36.0, 43300.0, 9, "Boston", "Basic", 2, 0], [22.0, 29500.0, 14, "Denver", "Premium", 1, 0], [53.0, null, 12, "Boston", "Basic", 4, 0], [36.0, 58900.0, 5, "Austin", "Basic", 3, 0], [53.0, 56200.0, 4, "Seattle", "Basic", 5, 1], [45.0, null, 11, "Boston", "Standard", 1, 0], [38.0, 39300.0, 1, "Denver", "Basic", 4, 1], [44.0, 57200.0, 8, "Seattle", "Basic", 2, 0], [63.0, 78000.0, 6, "Boston", "Standard", 1, 0], [65.0, 107800.0, 2, "Austin", "Standard", 3, 0], [41.0, 40400.0, 9, "Austin", "Standard", 2, 0], [42.0, 75500.0, 4, "Seattle", "Premium", 2, 0], [53.0, 69500.0, 2, "Denver", "Standard", 3, 0], [30.0, 51900.0, 9, "Austin", "Basic", 1, 0], [44.0, 61000.0, 2, "Seattle", "Basic", 2, 0], [40.0, 61300.0, 10, "Miami", "Premium", 1, 0], [null, 57800.0, 2, "Denver", "Basic", 4, 0], [30.0, 64400.0, 6, "Denver", "Standard", 2, 0], [21.0, 33400.0, 12, "Miami", "Premium", 1, 0], [18.0, null, 3, "Seattle", "Premium", 4, 1], [27.0, 36600.0, 11, "Miami", "Standard", 4, 0], [34.0, 49900.0, 10, "Denver", "Standard", 3, 0], [36.0, 39500.0, 13, "Boston", "Standard", 5, 0], [63.0, 82200.0, 2, "Seattle", "Standard", 4, 0], [53.0, 85000.0, 10, "Austin", "Basic", 3, 0], [28.0, null, 14, "Boston", "Basic", 0, 0], [44.0, null, 11, "Seattle", "Standard", 4, 0], [35.0, 38100.0, 2, "Austin", "Basic", 1, 0], [37.0, 50500.0, 12, "Austin", "Standard", 2, 0], [42.0, 38700.0, 1, "Seattle", "Basic", 0, 0], [47.0, 51300.0, 8, "Austin", "Premium", 2, 1], [36.0, 55100.0, 7, "Denver", "Premium", 1, 0], [53.0, 83500.0, 7, "Austin", "Standard", 2, 0], [26.0, 77100.0, 7, "Denver", "Standard", 0, 1], [40.0, null, 0, "Denver", "Basic", 1, 0], [71.0, 101100.0, 7, "Seattle", "Standard", 1, 0], [43.0, 61600.0, 14, "Denver", "Basic", 2, 0], [57.0, null, 6, "Austin", "Premium", 2, 0], [41.0, 62100.0, 4, "Seattle", "Premium", 0, 0], [47.0, 63000.0, 14, "Denver", "Premium", 2, 0], [39.0, 56400.0, 1, "Seattle", "Premium", 5, 0], [38.0, 49300.0, 7, "Austin", "Premium", 5, 0], [31.0, 31100.0, 7, "Austin", "Basic", 4, 1], [null, 42000.0, 7, "Austin", "Premium", 0, 0], [30.0, 54800.0, 13, "Seattle", "Standard", 0, 0], [48.0, 59900.0, 6, "Denver", "Standard", 1, 0], [53.0, 60500.0, 14, "Miami", "Standard", 3, 0], [44.0, null, 1, "Denver", "Basic", 1, 0], [37.0, 62800.0, 11, "Seattle", "Basic", 2, 0], [null, null, 8, null, "Basic", 2, 0], [36.0, 44500.0, 3, "Austin", "Basic", 3, 1], [51.0, 80600.0, 3, null, "Standard", 0, 0], [18.0, 55200.0, 10, "Denver", "Premium", 1, 0], [36.0, 58300.0, 9, null, "Standard", 2, 0], [18.0, 47900.0, 9, "Austin", "Standard", 0, 0], [22.0, 54700.0, 0, "Miami", "Standard", 1, 1], [56.0, null, 8, "Boston", "Standard", 1, 0], [51.0, 73300.0, 14, "Austin", "Basic", 2, 0], [31.0, 55100.0, 0, "Seattle", "Premium", 0, 0], [22.0, 46000.0, 7, "Miami", "Basic", 1, 0], [18.0, 23000.0, 7, "Denver", "Standard", 2, 0], [33.0, 58100.0, 13, "Miami", "Standard", 1, 0], [69.0, null, 4, "Seattle", "Standard", 2, 0], [45.0, 51000.0, 7, "Boston", "Premium", 2, 0], [33.0, null, 10, "Boston", "Basic", 1, 0], [46.0, 71500.0, 0, "Austin", "Premium", 5, 1], [21.0, 56700.0, 12, "Denver", "Standard", 2, 0], [36.0, 49100.0, 12, "Seattle", "Standard", 1, 0], [41.0, 43100.0, 10, "Austin", "Standard", 2, 0], [39.0, 52200.0, 9, "Denver", "Premium", 1, 1], [49.0, 65300.0, 11, "Boston", "Premium", 2, 0], [44.0, 60500.0, 11, null, "Standard", 0, 0], [48.0, 76800.0, 13, "Seattle", "Premium", 2, 0], [32.0, 44500.0, 6, "Miami", "Standard", 4, 0], [51.0, 70100.0, 6, "Denver", "Standard", 4, 0], [60.0, 62100.0, 9, "Seattle", "Premium", 4, 0], [28.0, 50600.0, 2, "Boston", "Basic", 0, 0], [29.0, 46100.0, 12, "Seattle", "Standard", 2, 0], [56.0, 61400.0, 11, "Austin", "Basic", 1, 0], [38.0, 51400.0, 9, "Austin", "Basic", 2, 0], [57.0, 69100.0, 4, "Boston", "Premium", 2, 0], [35.0, 48300.0, 5, "Denver", "Basic", 2, 0], [57.0, 92600.0, 6, "Seattle", "Basic", 0, 0], [42.0, 56600.0, 9, "Austin", "Basic", 0, 0], [43.0, 55800.0, 11, "Denver", "Standard", 0, 0], [59.0, 47900.0, 10, "Boston", "Premium", 3, 0], [36.0, 41700.0, 13, "Seattle", "Premium", 3, 0], [null, 42900.0, 14, "Boston", "Basic", 3, 0], [35.0, 43300.0, 10, null, "Standard", 0, 0], [null, 77100.0, 5, "Seattle", "Standard", 3, 0], [21.0, 36900.0, 8, "Boston", "Standard", 2, 0], [48.0, 78700.0, 6, "Denver", "Standard", 1, 0], [34.0, 51300.0, 9, "Denver", "Basic", 5, 0], [54.0, 69000.0, 12, "Boston", "Standard", 2, 0], [18.0, 35100.0, 5, "Denver", "Standard", 1, 1], [31.0, 47900.0, 7, "Seattle", "Standard", 0, 1], [20.0, 58600.0, 0, "Boston", "Standard", 3, 0], [30.0, 19200.0, 11, "Austin", "Premium", 1, 1], [43.0, 34700.0, 7, "Denver", "Standard", 2, 0], [38.0, 47700.0, 6, "Austin", "Basic", 0, 0], [37.0, 53500.0, 7, "Denver", "Premium", 0, 0], [null, 62500.0, 3, "Austin", "Premium", 2, 0], [42.0, 63500.0, 8, "Seattle", "Basic", 0, 0], [28.0, 40600.0, 11, "Austin", "Standard", 1, 0], [48.0, 75400.0, 5, "Seattle", "Basic", 6, 0], [48.0, 75600.0, 1, "Denver", "Standard", 0, 0], [45.0, 62700.0, 5, "Denver", "Basic", 1, 1], [47.0, 73900.0, 2, "Denver", "Standard", 4, 0], [44.0, 62900.0, 5, "Miami", "Basic", 2, 0], [64.0, 70900.0, 9, "Seattle", "Standard", 3, 0], [39.0, null, 1, "Denver", "Premium", 2, 0], [36.0, 53700.0, 11, "Boston", "Basic", 1, 0], [31.0, 47900.0, 3, "Seattle", "Premium", 0, 0], [28.0, null, 13, "Austin", "Premium", 1, 0], [25.0, 13100.0, 10, "Boston", "Premium", 1, 0], [29.0, null, 4, null, "Basic", 2, 1], [39.0, 40900.0, 8, "Austin", "Premium", 0, 0], [44.0, 55200.0, 1, "Seattle", "Basic", 2, 0], [41.0, 53800.0, 1, "Austin", "Basic", 3, 1], [31.0, 29800.0, 14, "Austin", "Premium", 1, 0], [51.0, 54100.0, 12, "Miami", "Standard", 1, 0], [49.0, 53800.0, 2, "Austin", "Standard", 3, 0], [38.0, 83700.0, 4, "Miami", "Basic", 1, 0], [32.0, 70400.0, 2, "Boston", "Premium", 1, 0], [47.0, 57400.0, 5, "Seattle", "Standard", 3, 1], [42.0, 53400.0, 4, "Miami", "Standard", 1, 0], [23.0, 26900.0, 4, "Miami", "Premium", 4, 1], [39.0, 32200.0, 7, "Boston", "Basic", 1, 0], [43.0, 57300.0, 2, "Denver", "Basic", 1, 1], [29.0, 34100.0, 13, "Austin", "Standard", 2, 0], [42.0, null, 10, "Seattle", "Premium", 0, 0], [23.0, 21500.0, 11, "Seattle", "Basic", 0, 0], [56.0, 61300.0, 2, "Austin", "Basic", 2, 0], [55.0, 71300.0, 10, "Seattle", "Basic", 2, 0], [37.0, 57700.0, 12, "Austin", "Premium", 1, 0], [44.0, 64600.0, 2, "Boston", "Basic", 1, 0], [18.0, 20400.0, 11, "Denver", "Standard", 0, 0], [26.0, 53700.0, 5, "Austin", "Premium", 3, 0], [36.0, 42800.0, 11, "Austin", "Basic", 3, 0], [27.0, 51900.0, 7, "Austin", "Standard", 1, 0], [49.0, 64000.0, 12, "Denver", "Standard", 0, 0], [64.0, 61100.0, 2, "Austin", "Premium", 3, 0], [26.0, 39600.0, 5, "Denver", "Basic", 2, 1], [30.0, 51400.0, 4, "Austin", "Standard", 1, 0], [43.0, 66100.0, 3, "Denver", "Basic", 5, 0], [59.0, 71400.0, 4, "Denver", "Standard", 1, 0], [25.0, 60900.0, 5, "Denver", "Standard", 0, 0], [43.0, 70800.0, 1, "Denver", "Basic", 3, 0], [62.0, 72700.0, 10, "Austin", "Basic", 2, 1], [20.0, 47000.0, 8, "Austin", "Premium", 1, 0], [25.0, 65700.0, 12, "Austin", "Basic", 3, 0], [35.0, 75000.0, 10, "Miami", "Basic", 1, 0], [34.0, 35900.0, 2, "Boston", "Standard", 3, 0], [null, 53900.0, 1, "Boston", "Basic", 5, 0], [43.0, 76500.0, 6, "Seattle", "Basic", 3, 0], [19.0, 24400.0, 7, "Seattle", "Standard", 2, 0]], "scatter": null, "series": null, "target": "churned", "task": "classification"};
+const INK="#1b1d23", MUT="#8b90a0", ACC="#2a44b8", LINE="#e9e7e1", WARM="#a8551f", OK="#1f7a54";
+const PAL=["#2a44b8","#1f7a54","#a8551f","#7a1f6b","#0e6f8f","#8a6d1a","#3f51b5","#b0561f"];
+Chart.defaults.font.family="'IBM Plex Sans', sans-serif"; Chart.defaults.color=MUT;
+
+const colIndex = n => D.columns.findIndex(c=>c.name===n);
+const isNum = n => (D.columns.find(c=>c.name===n)||{}).type==="numeric";
+const numCols = D.columns.filter(c=>c.type==="numeric").map(c=>c.name);
+const catCols = D.columns.filter(c=>c.type==="category").map(c=>c.name);
+const feats = D.columns.filter(c=>!c.is_target).map(c=>c.name);
+let filter = {col:null, val:null};
+const charts = {};
+function draw(id, cfg){ if(charts[id]) charts[id].destroy(); const el=document.getElementById(id);
+  if(el) charts[id]=new Chart(el, cfg); }
+
+function rows(){ if(!filter.col || filter.val===null || filter.val==='') return D.rows;
+  const i=colIndex(filter.col); return D.rows.filter(r=> String(r[i])===String(filter.val)); }
+function vals(name, rs){ const i=colIndex(name); return rs.map(r=>r[i]); }
+function nums(arr){ return arr.filter(v=>v!==null&&v!==undefined&&v!=='' && !isNaN(v)).map(Number); }
+
+function histogram(arr, bins=12){ const a=nums(arr); if(!a.length) return null;
+  let lo=Math.min(...a), hi=Math.max(...a); if(lo===hi) hi=lo+1; const w=(hi-lo)/bins;
+  const c=new Array(bins).fill(0); a.forEach(v=>{ let b=Math.floor((v-lo)/w); if(b>=bins)b=bins-1; if(b<0)b=0; c[b]++; });
+  const labels=c.map((_,i)=>Math.round(lo+w*i)); return {labels, values:c, a}; }
+function counts(arr, top=12){ const m={}; arr.forEach(v=>{ const k=(v===null||v===undefined||v==='')?'(missing)':String(v); m[k]=(m[k]||0)+1; });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,top); }
+function pearson(xs, ys){ const p=[]; for(let i=0;i<xs.length;i++){ const a=xs[i],b=ys[i];
+  if(a!==null&&b!==null&&a!==''&&b!==''&&!isNaN(a)&&!isNaN(b)) p.push([+a,+b]); }
+  const n=p.length; if(n<3) return 0; const mx=p.reduce((s,q)=>s+q[0],0)/n, my=p.reduce((s,q)=>s+q[1],0)/n;
+  let sxy=0,sx=0,sy=0; p.forEach(q=>{ sxy+=(q[0]-mx)*(q[1]-my); sx+=(q[0]-mx)**2; sy+=(q[1]-my)**2; });
+  return (sx&&sy)? sxy/Math.sqrt(sx*sy):0; }
+
+function barCfg(labels, values, horizontal){ return {type:"bar",
+  data:{labels, datasets:[{data:values, backgroundColor:ACC, borderRadius:4}]},
+  options:{indexAxis:horizontal?"y":"x", responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}}, scales:{x:{grid:{color:LINE}}, y:{grid:{color:LINE}}}}}; }
+function doughnutCfg(labels, values){ return {type:"doughnut",
+  data:{labels, datasets:[{data:values, backgroundColor:PAL, borderColor:"#fff", borderWidth:2}]},
+  options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}}}}; }
+
+/* ---------- OVERVIEW ---------- */
+function renderOverview(){
+  const p=D.profile;
+  document.getElementById("healthNum").textContent = p.completeness + "%";
+  document.getElementById("healthSub").innerHTML =
+    "complete &middot; " + (p.duplicates||0) + " duplicate rows &middot; " +
+    p.n_rows + " rows &times; " + p.n_cols + " columns";
+  draw("cTypes", doughnutCfg(["numeric","categorical"], [p.type_split.numeric, p.type_split.categorical]));
+  if(p.missing.labels.length) draw("cMissing", barCfg(p.missing.labels, p.missing.values, false));
+  else document.getElementById("cMissing").parentElement.innerHTML='<p class="muted">No missing values.</p>';
+}
+
+/* ---------- DATA ANALYSIS ---------- */
+function fillSelect(el, options, selected){ el.innerHTML=""; options.forEach(o=>{ const op=document.createElement("option");
+  op.value=o; op.textContent=o; if(o===selected) op.selected=true; el.appendChild(op); }); }
+
+function renderExplore(){
+  const rs=rows(); const name=document.getElementById("distCol").value;
+  const arr=vals(name, rs);
+  if(isNum(name)){ const h=histogram(arr); if(!h) return;
+    draw("cExplore", barCfg(h.labels, h.values, false));
+    const a=h.a, mean=a.reduce((s,v)=>s+v,0)/a.length;
+    document.getElementById("distStats").textContent =
+      `min ${Math.min(...a).toFixed(2)}, max ${Math.max(...a).toFixed(2)}, mean ${mean.toFixed(2)}`;
+  } else { const c=counts(arr); draw("cExplore", barCfg(c.map(x=>x[0]), c.map(x=>x[1]), true));
+    document.getElementById("distStats").textContent = `${new Set(arr).size} distinct values`; }
+}
+function renderRel(){
+  const rs=rows(); const f=document.getElementById("relCol").value; const tgt=D.target;
+  if(!tgt){ document.getElementById("cRel").parentElement.innerHTML='<p class="muted">No target column.</p>'; return; }
+  const ti=colIndex(tgt), fi=colIndex(f);
+  if(isNum(tgt)){ // numeric target: mean target by feature (category) or scatter (numeric)
+    if(isNum(f)){ const pts=rs.map(r=>({x:+r[fi], y:+r[ti]})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
+      draw("cRel", {type:"scatter", data:{datasets:[{data:pts, backgroundColor:"rgba(42,68,184,.45)"}]},
+        options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+          scales:{x:{title:{display:true,text:f},grid:{color:LINE}}, y:{title:{display:true,text:tgt},grid:{color:LINE}}}}});
+    } else { const groups={}; rs.forEach(r=>{ const k=String(r[fi]); if(!groups[k])groups[k]=[]; if(!isNaN(r[ti]))groups[k].push(+r[ti]); });
+      const labels=Object.keys(groups).slice(0,12); const means=labels.map(k=>groups[k].reduce((s,v)=>s+v,0)/(groups[k].length||1));
+      draw("cRel", barCfg(labels, means.map(v=>+v.toFixed(2)), true)); }
+  } else { // categorical target: stacked counts of target within feature buckets
+    const cats=[...new Set(rs.map(r=>String(r[ti])))].slice(0,8);
+    let labels, groups;
+    if(isNum(f)){ const h=histogram(vals(f,rs)); labels=h?h.labels.map(String):[]; // bucket numeric feature
+      const lo=Math.min(...nums(vals(f,rs))), hi=Math.max(...nums(vals(f,rs))), w=(hi-lo)/(labels.length||1);
+      groups=labels.map(()=>({})); rs.forEach(r=>{ let b=Math.floor((+r[fi]-lo)/w); if(isNaN(b))return; if(b>=labels.length)b=labels.length-1; if(b<0)b=0;
+        const k=String(r[ti]); groups[b][k]=(groups[b][k]||0)+1; });
+    } else { labels=[...new Set(rs.map(r=>String(r[fi])))].slice(0,12); groups=labels.map(l=>{ const o={}; rs.forEach(r=>{ if(String(r[fi])===l){ const k=String(r[ti]); o[k]=(o[k]||0)+1; } }); return o; }); }
+    const ds=cats.map((ct,i)=>({label:ct, data:labels.map((_,li)=>groups[li][ct]||0), backgroundColor:PAL[i%PAL.length]}));
+    draw("cRel", {type:"bar", data:{labels, datasets:ds},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}},
+        scales:{x:{stacked:true,grid:{color:LINE}}, y:{stacked:true,grid:{color:LINE}}}}});
+  }
+}
+function renderCorr(){
+  const rs=rows(); const cols=numCols; if(cols.length<2){ document.getElementById("corr").innerHTML='<p class="muted">Need at least two numeric columns.</p>'; return; }
+  const M=cols.map(a=> cols.map(b=> pearson(vals(a,rs), vals(b,rs)) ));
+  let h='<table class="cm corr"><tr><th></th>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  M.forEach((row,i)=>{ h+=`<tr><th>${cols[i]}</th>`; row.forEach(v=>{ const r=Math.max(-1,Math.min(1,v));
+    const col = r>=0? `rgba(42,68,184,${(Math.abs(r)*0.8+0.05).toFixed(2)})` : `rgba(168,85,31,${(Math.abs(r)*0.8+0.05).toFixed(2)})`;
+    h+=`<td title="${r.toFixed(2)}" style="background:${col};color:${Math.abs(r)>0.55?'#fff':INK}">${r.toFixed(2)}</td>`; }); h+='</tr>'; });
+  h+='</table>'; document.getElementById("corr").innerHTML=h;
+}
+let sortState={col:0, dir:1};
+function renderTable(){
+  const rs=rows(); const cols=D.columns.map(c=>c.name); const show=rs.slice(0,200);
+  show.sort((a,b)=>{ const x=a[sortState.col], y=b[sortState.col];
+    if(x===null)return 1; if(y===null)return -1; if(!isNaN(x)&&!isNaN(y)) return (x-y)*sortState.dir; return String(x).localeCompare(String(y))*sortState.dir; });
+  let h='<thead><tr>'+cols.map((c,i)=>`<th data-i="${i}">${c}${sortState.col===i?(sortState.dir>0?' ▲':' ▼'):''}</th>`).join('')+'</tr></thead><tbody>';
+  show.forEach(r=>{ h+='<tr>'+r.map(v=>`<td>${v===null?'':v}</td>`).join('')+'</tr>'; });
+  h+='</tbody>'; const t=document.getElementById("dtable"); t.innerHTML=h;
+  t.querySelectorAll("th").forEach(th=> th.onclick=()=>{ const i=+th.dataset.i; sortState.dir = (sortState.col===i)? -sortState.dir:1; sortState.col=i; renderTable(); });
+  document.getElementById("tableInfo").textContent = `${rs.length} rows${filter.col?' (filtered)':''}, showing first ${show.length}`;
+}
+function renderData(){ renderExplore(); renderRel(); renderCorr(); renderTable();
+  document.getElementById("fCount").textContent = filter.col? `${rows().length} of ${D.rows.length} rows` : ''; }
+
+/* ---------- MODEL ---------- */
+function renderModel(){
+  const mm=document.getElementById("modelMetrics");
+  mm.innerHTML=Object.entries(D.metrics).map(([k,v])=>`<div class="metric"><span class="mval">${v}</span><span class="mkey">${k}</span></div>`).join('');
+  if(D.leaderboard.length) draw("cLeader", barCfg(D.leaderboard.map(r=>r.name), D.leaderboard.map(r=>r.score), true));
+  if(D.features.length) draw("cFeat", barCfg(D.features.map(f=>f.name), D.features.map(f=>f.value), true));
+  if(D.confusion){ show("wConf"); renderConfusion(); }
+  if(D.scatter && !D.series){ show("wScatter"); draw("cScatter", {type:"scatter",
+    data:{datasets:[{data:D.scatter.map(p=>({x:p[0],y:p[1]})), backgroundColor:"rgba(42,68,184,.5)"}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{x:{title:{display:true,text:"actual"},grid:{color:LINE}}, y:{title:{display:true,text:"predicted"},grid:{color:LINE}}}}}); }
+  if(D.series){ show("wSeries"); const idx=D.series.actual.map((_,i)=>i+1);
+    draw("cSeries", {type:"line", data:{labels:idx, datasets:[
+      {label:"actual", data:D.series.actual, borderColor:ACC, pointRadius:0, tension:.2},
+      {label:"forecast", data:D.series.pred, borderColor:WARM, pointRadius:0, tension:.2}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}}, scales:{x:{grid:{color:LINE}}, y:{grid:{color:LINE}}}}}); }
+  if(D.roc){ show("wRoc"); draw("cRoc", {type:"line", data:{labels:D.roc.fpr, datasets:[
+      {label:"model", data:D.roc.fpr.map((f,i)=>({x:f,y:D.roc.tpr[i]})), borderColor:ACC, pointRadius:0},
+      {label:"chance", data:[{x:0,y:0},{x:1,y:1}], borderColor:MUT, borderDash:[4,4], pointRadius:0}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}},
+        scales:{x:{type:"linear",title:{display:true,text:"false positive rate"},grid:{color:LINE}}, y:{title:{display:true,text:"true positive rate"},grid:{color:LINE}}}}}); }
+  if(D.pr){ show("wPr"); draw("cPr", {type:"line", data:{datasets:[
+      {label:"model", data:D.pr.recall.map((r,i)=>({x:r,y:D.pr.precision[i]})), borderColor:OK, pointRadius:0}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{x:{type:"linear",title:{display:true,text:"recall"},grid:{color:LINE}}, y:{title:{display:true,text:"precision"},grid:{color:LINE}}}}}); }
+  if(D.per_class && D.per_class.length){ show("wPerClass");
+    draw("cPerClass", {type:"bar", data:{labels:D.per_class.map(c=>c.label), datasets:[
+      {label:"precision", data:D.per_class.map(c=>c.precision), backgroundColor:ACC},
+      {label:"recall", data:D.per_class.map(c=>c.recall), backgroundColor:OK}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}}, scales:{x:{grid:{color:LINE}}, y:{grid:{color:LINE}}}}}); }
+  if(D.cv && D.cv.scores){ show("wCv");
+    draw("cCv", barCfg(D.cv.scores.map((_,i)=>"fold "+(i+1)), D.cv.scores, false)); }
+  if(D.cluster_sizes){ show("wCluster"); draw("cCluster", doughnutCfg(Object.keys(D.cluster_sizes), Object.values(D.cluster_sizes))); }
+}
+function show(id){ document.getElementById(id).hidden=false; }
+function renderConfusion(){ const {labels, matrix}=D.confusion; let max=0; matrix.forEach(r=>r.forEach(v=>{ if(v>max)max=v; }));
+  let h='<table class="cm"><tr><th></th><th colspan="'+labels.length+'">predicted</th></tr><tr><th></th>'+labels.map(l=>`<th>${l}</th>`).join('')+'</tr>';
+  matrix.forEach((row,i)=>{ h+=`<tr><th>${labels[i]}</th>`; row.forEach(v=>{ const a=max?v/max:0;
+    h+=`<td style="background:rgba(42,68,184,${(0.08+a*0.72).toFixed(2)});color:${a>0.5?'#fff':INK}">${v}</td>`; }); h+='</tr>'; });
+  document.getElementById("confusion").innerHTML=h+'</table>'; }
+
+/* ---------- INSIGHTS ---------- */
+function renderInsights(){
+  document.getElementById("findings").innerHTML = D.insights.findings.map(b=>`<li>${b}</li>`).join('') || '<li class="muted">No findings.</li>';
+  document.getElementById("guidance").innerHTML = D.insights.guidance.map(b=>`<li>${b}</li>`).join('') || '<li class="muted">No guidance.</li>';
+  document.getElementById("ins-checks").innerHTML = (D.checks||[]).map(f=>
+    `<li class="chk ${f.level}"><span class="chk-tag">${f.level}</span><div><b>${f.title}</b><span class="chk-detail">${f.detail}</span></div></li>`).join('') || '<li class="muted">No issues found.</li>';
+}
+
+/* ---------- tabs + filter wiring ---------- */
+const built={};
+function activate(tab){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===tab));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active", p.id==="p-"+tab));
+  document.getElementById("filterbar").hidden = (tab!=="data");
+  if(!built[tab]){ built[tab]=true;
+    if(tab==="data") renderData(); else if(tab==="model") renderModel(); else if(tab==="insights") renderInsights(); }
+  else { Object.values(charts).forEach(c=>c.resize()); }
+}
+document.querySelectorAll(".tab").forEach(t=> t.onclick=()=>activate(t.dataset.tab));
+
+// distribution + relationship selectors
+fillSelect(document.getElementById("distCol"), D.columns.map(c=>c.name), numCols[0]||D.columns[0].name);
+fillSelect(document.getElementById("relCol"), feats, feats[0]);
+document.getElementById("distCol").onchange=renderExplore;
+document.getElementById("relCol").onchange=renderRel;
+
+// global filter
+const fCol=document.getElementById("fCol"), fVal=document.getElementById("fVal");
+fillSelect(fCol, ["", ...catCols], "");
+fCol.onchange=()=>{ filter.col=fCol.value||null; filter.val=null;
+  if(filter.col){ const vs=[...new Set(D.rows.map(r=>String(r[colIndex(filter.col)])))].slice(0,40);
+    fVal.disabled=false; fillSelect(fVal, ["", ...vs], ""); } else { fVal.disabled=true; fVal.innerHTML='<option value="">all</option>'; }
+  renderData(); };
+fVal.onchange=()=>{ filter.val=fVal.value||null; renderData(); };
+document.getElementById("fClear").onclick=()=>{ fCol.value=""; fVal.innerHTML='<option value="">all</option>'; fVal.disabled=true; filter={col:null,val:null}; renderData(); };
+
+renderOverview();
+</script>
+</body>
+</html>
