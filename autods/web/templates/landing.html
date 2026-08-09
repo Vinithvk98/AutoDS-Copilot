@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoDS, from spreadsheet to model</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="lp-wrap">
+    <nav class="lp-nav" id="nav">
+      <a href="/" class="brand"><span class="brand-name">AutoDS</span></a>
+      <div class="lp-links">
+        <a class="navlink" href="#how">How it works</a>
+        <a class="navlink" href="/algorithms">Algorithms</a>
+        <a class="navlink" href="/about">About</a>
+        <a class="btn primary" href="/app">Open the console</a>
+      </div>
+    </nav>
+
+    <header class="lp-hero">
+      <span class="lp-eyebrow">Automated data science</span>
+      <h1 class="lp-title">From a raw spreadsheet to a working model, in one sitting.</h1>
+      <p class="lp-sub">AutoDS explores your data, checks it for problems, compares dozens of
+      models, trains the best one, and explains the result in plain language. You review each
+      step and stay in control.</p>
+      <div class="lp-cta-row">
+        <a class="btn primary lg" href="/app">Open the console</a>
+        <a class="btn lg" href="#how">See how it works</a>
+      </div>
+      <p class="lp-trust">Made for anyone with data and a question, no code required.
+      Runs entirely on your own machine, so nothing leaves your computer.
+      <a href="/about">Read more about it</a>.</p>
+
+      <div class="lp-peek">
+        <div class="lp-peek-bar"><i class="r"></i><i class="y"></i><i class="g"></i><span>run log</span></div>
+        <div class="lp-peek-body" id="peek"></div>
+      </div>
+
+      <div class="lp-stats">
+        <div class="lp-stat"><b data-count="30">30+</b><span><a href="/algorithms">algorithms</a></span></div>
+        <div class="lp-stat"><b data-count="5">5</b><span>problem types</span></div>
+        <div class="lp-stat"><b>Local</b><span>and private</span></div>
+      </div>
+    </header>
+
+    <section class="lp-section reveal" id="how">
+      <span class="lp-kicker">How it works</span>
+      <h2 class="lp-h2">Five steps, and you approve each one.</h2>
+      <p class="lp-lead">There is no black box. At every stage you see what it found and decide
+      what happens next.</p>
+      <div class="lp-flow">
+        <div class="lp-step"><div class="num">01</div><div>
+          <h4>Load your data</h4>
+          <p>Point it at a CSV or spreadsheet. It reads the structure and quietly fixes the obvious
+          mess, like stray text, wrong types, and duplicate rows.</p></div></div>
+        <div class="lp-step"><div class="num">02</div><div>
+          <h4>Explore and check</h4>
+          <p>You get clear charts with the code behind them, and a set of data checks that flag
+          leakage, ID columns, and other traps before you ever model.</p></div></div>
+        <div class="lp-step"><div class="num">03</div><div>
+          <h4>Clean</h4>
+          <p>It suggests how to handle missing values and messy columns, and waits for your approval
+          before touching the data.</p></div></div>
+        <div class="lp-step"><div class="num">04</div><div>
+          <h4>Model</h4>
+          <p>It ranks more than thirty algorithms, tunes the winner, and can even blend the best few
+          into an ensemble. You make the final call.</p></div></div>
+        <div class="lp-step"><div class="num">05</div><div>
+          <h4>Understand</h4>
+          <p>You get the metrics that matter, an interactive dashboard, a written analysis, and a
+          model you can download or point at new data.</p></div></div>
+      </div>
+    </section>
+
+    <section class="lp-section reveal" id="get">
+      <span class="lp-kicker">What you get</span>
+      <h2 class="lp-h2">More than a score.</h2>
+      <p class="lp-lead">Every run ends in something you can actually use, read, and share.</p>
+      <div class="lp-grid">
+        <div class="lp-feature">
+          <div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <h4>Data quality checks</h4>
+          <p>It audits the data for leakage, ID columns, duplicates, and outliers, and warns you
+          before a misleading model ever gets trained.</p>
+        </div>
+        <div class="lp-feature">
+          <div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3v18h18"/><path d="M7 15l3-3 3 2 4-6"/></svg></div>
+          <h4>A real model hub</h4>
+          <p>More than thirty algorithms cross checked on your data, with tuning and ensembles, so
+          you are never trusting a single guess.</p>
+        </div>
+        <div class="lp-feature">
+          <div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg></div>
+          <h4>An interactive dashboard</h4>
+          <p>A filterable board in the spirit of Power BI. Explore distributions, correlations, and
+          the model results, all in your browser.</p>
+        </div>
+        <div class="lp-feature">
+          <div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7M9 8h3"/></svg></div>
+          <h4>A written analysis</h4>
+          <p>It writes up the whole run in plain sentences, what it found and what to do next, in a
+          report you can hand to someone.</p>
+        </div>
+        <div class="lp-feature">
+          <div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M5 21h14"/></svg></div>
+          <h4>Predict and export</h4>
+          <p>Score new files, download the predictions, and take the model with a ready to run code
+          snippet and the column list.</p>
+        </div>
+        <div class="lp-feature">
+          <div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v11H8l-4 3z"/><path d="M8 9h8M8 12h5"/></svg></div>
+          <h4>It learns and answers</h4>
+          <p>It remembers past runs to recommend by analogy, and you can ask it questions that it
+          answers from real guidance, with the sources shown.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-section reveal" id="handles">
+      <span class="lp-kicker">What it handles</span>
+      <h2 class="lp-h2">It works out the problem, not just the numbers.</h2>
+      <p class="lp-lead">AutoDS reads your target column and figures out which kind of problem you
+      have, then adapts on its own.</p>
+      <table class="lp-table">
+        <tr><th>Your data</th><th>What AutoDS does</th></tr>
+        <tr><td>A yes or no outcome, like churn or fraud</td>
+            <td>Classification, with the right metrics for the balance of your classes</td></tr>
+        <tr><td>A number to predict, like price or demand</td>
+            <td>Regression, with error you can actually read</td></tr>
+        <tr><td>No target, just rows to group</td>
+            <td>Clustering, to surface the natural segments</td></tr>
+        <tr><td>A value that moves over time</td>
+            <td>Forecasting, with seasonality and trend handled</td></tr>
+        <tr><td>Free text, like reviews or tickets</td>
+            <td>Text classification, built on the words that matter</td></tr>
+      </table>
+    </section>
+
+    <section class="lp-section reveal" id="tech">
+      <span class="lp-kicker">Under the hood</span>
+      <h2 class="lp-h2">Built on tools professionals actually use.</h2>
+      <p class="lp-lead">The same libraries and ideas a working data team would reach for, wired
+      together so you do not have to.</p>
+      <div class="lp-grid">
+        <div class="lp-feature"><div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/></svg></div>
+          <h4>Multi agent</h4><p>A crew of specialist agents, each owning one job in the pipeline.</p></div>
+        <div class="lp-feature"><div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8 8.5v7M8.4 7.2 15.6 11M8.4 16.8 15.6 13"/></svg></div>
+          <h4>LangGraph</h4><p>A stateful graph runs the loop and pauses for your approval.</p></div>
+        <div class="lp-feature"><div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+          <h4>RAG</h4><p>Retrieval grounds every insight and answer in real guidance and past runs.</p></div>
+        <div class="lp-feature"><div class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg></div>
+          <h4>MCP</h4><p>The whole pipeline is also a set of tools any AI client can call.</p></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="lp-final reveal">
+    <h2>See what is hiding in your data.</h2>
+    <a class="btn primary lg" href="/app">Open the console</a>
+  </section>
+  <footer class="lp-foot">
+    <span>AutoDS. Built with Python and scikit-learn.</span>
+    <span>A project by Prakruthi</span>
+  </footer>
+
+<script>
+(function(){
+  var lines = [
+    '<span class="k">&rsaquo;</span> loaded 600 rows, 7 columns from customers.csv',
+    '<span class="k">&rsaquo;</span> checked for leakage and messy columns, all clear',
+    '<span class="k">&rsaquo;</span> tested 12 models, best was <span class="m">Gradient Boosting</span>',
+    '<span class="k">&rsaquo;</span> accuracy <span class="v">0.842</span>, cross checked across 5 folds',
+    '<span class="k">&rsaquo;</span> wrote the analysis and built a dashboard'
+  ];
+  var peek = document.getElementById('peek'), i = 0;
+  function tick(){
+    var d = document.createElement('div'); d.innerHTML = lines[i]; peek.appendChild(d); i++;
+    if(i < lines.length) setTimeout(tick, 720);
+  }
+  if(peek) tick();
+})();
+</script>
+<script src="{{ url_for('static', filename='motion.js') }}"></script>
+</body>
+</html>

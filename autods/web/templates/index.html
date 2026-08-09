@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block steps %}{% set active='1' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Load a dataset</h1>
+<p class="lede">Upload a CSV or spreadsheet, or start with one of the samples. AutoDS reads it,
+shows you what is inside, and recommends how to clean and model it. You approve each step.</p>
+
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+
+<form class="card" method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data">
+  <label class="field">
+    <span>Upload a file</span>
+    <input type="file" name="file" accept=".csv,.tsv,.xlsx,.xls,.json">
+  </label>
+
+  {% if samples %}
+  <div class="or">or start with a sample</div>
+  <label class="field">
+    <span>Sample dataset</span>
+    <select name="sample">
+      <option value="">(none)</option>
+      {% for s in samples %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+
+  <label class="field">
+    <span>Target column <em>(optional, leave blank to auto detect or cluster)</em></span>
+    <input type="text" name="target" placeholder="e.g. churned">
+  </label>
+
+  <button class="btn primary" type="submit">Analyse</button>
+</form>
+{% endblock %}

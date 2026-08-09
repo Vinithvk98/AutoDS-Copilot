@@ -1,0 +1,35 @@
+<h1>Hyperparameter tuning for {{ model_name }}</h1>
+{% if result %}
+<p class="lede">AutoDS searched the settings for {{ model_name }}, applied the best ones,
+and retrained the model. The tuned version is now the active model.</p>
+
+<div class="card"><h3>Best settings found</h3>
+  <table class="kv">{% for k, v in result.best_params.items() %}
+    <tr><td>{{ k }}</td><td><span class="pill">{{ v }}</span></td></tr>{% endfor %}</table>
+</div>
+
+{% if after %}
+<div class="card"><h3>Before and after, on the held-out test</h3>
+  <table class="kv board">
+    <tr><th>Metric</th><th>Before</th><th>After tuning</th></tr>
+    {% for k, v in after.items() %}
+    <tr><td>{{ k }}</td>
+      <td>{{ before.get(k, '·') }}</td>
+      <td>{{ v }}{% if improved.get(k) %} <span class="pill">better</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% else %}
+<div class="card"><p class="muted">No tuning grid is defined for this model.</p></div>
+{% endif %}
+
+<div class="actions">
+  <button class="btn primary" type="button" data-go="report" data-sid="{{ sid }}">Read the analysis</button>
+  {% if task and task.task_type not in ('clustering', 'timeseries') %}
+  <button class="btn" type="button" data-go="predict" data-sid="{{ sid }}">Predict on new data</button>{% endif %}
+  {% if task and task.task_type != 'clustering' %}
+  <a class="btn" href="{{ url_for('download_route', sid=sid) }}">Download model and code</a>{% endif %}
+  <button class="btn" type="button" data-go="models" data-sid="{{ sid }}">Back to models</button>
+  <button class="btn" type="button" data-go="restart">Start a new run</button>
+</div>

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block steps %}{% set active='2' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Explore &amp; understand</h1>
+{% if preclean %}
+<div class="card preclean">
+  <h3>Pre-clean report <span class="muted">· mechanical fixes applied before analysis</span></h3>
+  <ul class="fixlist">{% for ch in preclean %}<li>{{ ch }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+<div class="grid2">
+  <div class="card">
+    <h3>Dataset profile</h3>
+    <table class="kv">
+      <tr><td>Rows</td><td>{{ profile.n_rows }}</td></tr>
+      <tr><td>Columns</td><td>{{ profile.n_cols }}</td></tr>
+      <tr><td>Numeric / Categorical</td>
+          <td>{{ profile.types.numeric|length }} / {{ profile.types.categorical|length }}</td></tr>
+      <tr><td>Duplicate rows</td><td>{{ profile.n_duplicates }}</td></tr>
+      <tr><td>Columns with missing</td><td>{{ profile.missing|length }}</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Detected task</h3>
+    <p><span class="pill">{{ task.task_type }}</span></p>
+    <p class="muted">{{ task.reason }}</p>
+    <form method="post" action="{{ url_for('explore', sid=sid) }}" class="inline">
+      <label>Target:
+        <select name="target" onchange="this.form.submit()">
+          <option value="">(none / cluster)</option>
+          {% for c in columns %}
+          <option value="{{ c }}" {% if c == task.target %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <noscript><button class="btn" type="submit">Update</button></noscript>
+    </form>
+  </div>
+</div>
+
+{% if checks %}
+<div class="card">
+  <h3>Data checks</h3>
+  <ul class="checklist">
+    {% for f in checks %}
+    <li class="chk {{ f.level }}"><span class="chk-tag">{{ f.level }}</span>
+      <div><b>{{ f.title }}</b><span class="chk-detail">{{ f.detail }}</span></div></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+<div class="card">
+  <h3>Pre-modelling insights</h3>
+  <ul class="insights">
+    {% for b in pre_insights %}<li>{{ b }}</li>{% endfor %}
+  </ul>
+</div>
+
+<h2>Charts <span class="muted">with the code behind them and a plain reading</span></h2>
+<div class="gallery">
+  {% for c in charts %}
+  <figure class="chart">
+    <img src="{{ c.url }}" alt="{{ c.title }}" loading="lazy">
+    <figcaption>
+      <b>{{ c.title }}</b>
+      <code>{{ c.code }}</code>
+      <span class="insight">{{ c.insight }}</span>
+    </figcaption>
+  </figure>
+  {% endfor %}
+</div>
+
+<div class="actions">
+  <a class="btn primary" href="{{ url_for('clean', sid=sid) }}">Continue to cleaning →</a>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+<article class="report">
+  <header class="report-head">
+    <h1>{{ rep.title }}</h1>
+    <p class="report-sub">{{ rep.subtitle }}</p>
+  </header>
+  {% for sec in rep.sections %}
+  <section class="report-sec">
+    <h2>{{ sec.heading }}</h2>
+    {% for p in sec.paras %}{% if p %}<p>{{ p }}</p>{% endif %}{% endfor %}
+    {% if sec.bullets %}
+    <ul class="report-list">{% for b in sec.bullets %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+    {% if sec.metrics %}
+    <div class="metrics">{% for k, v in sec.metrics.items() %}
+      <div class="metric"><span class="mval">{{ v }}</span><span class="mkey">{{ k }}</span></div>{% endfor %}</div>{% endif %}
+    {% if sec.board and sec.board.rows %}
+    <table class="kv board"><tr><th>Model</th><th>{{ sec.board.metric }}</th></tr>
+      {% for r in sec.board.rows %}{% if r.score is not none %}
+      <tr class="{% if r.best %}bestrow{% endif %}"><td>{{ r.name }}</td><td>{{ r.score }}</td></tr>
+      {% endif %}{% endfor %}</table>{% endif %}
+    {% if sec.features %}
+    <table class="kv bars">{% set maxv = sec.features[0].importance %}
+      {% for f in sec.features %}<tr><td>{{ f.feature.split('__')[-1].replace('_',' ') }}</td>
+        <td><span class="bar" style="width: {{ (100 * f.importance / maxv)|round(0) }}%"></span></td></tr>{% endfor %}</table>{% endif %}
+    {% if sec.chart_urls %}
+    <div class="report-figs">{% for u in sec.chart_urls %}<img src="{{ u }}" loading="lazy">{% endfor %}</div>{% endif %}
+    {% if sec.note %}<div class="report-note">{{ sec.note }}</div>{% endif %}
+  </section>
+  {% endfor %}
+</article>

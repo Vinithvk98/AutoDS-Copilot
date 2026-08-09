@@ -1,0 +1,43 @@
+<h1>Results for {{ model_name }}</h1>
+<p class="lede">Trained on a held-out split for a <b>{{ task.task_type }}</b> task
+{% if task.target %}(target: <code>{{ task.target }}</code>){% endif %}.</p>
+<div class="metrics">
+  {% for k, v in metrics.items() %}
+  <div class="metric"><span class="mval">{{ v }}</span><span class="mkey">{{ k }}</span></div>{% endfor %}
+</div>
+{% if cv %}
+<p class="muted">Checked across {{ cv.folds }} folds of the data, the {{ cv.metric }} holds at
+about {{ cv.mean }} give or take {{ cv.std }}, so the score above is not a one off.</p>
+{% endif %}
+<div class="grid2">
+  <div class="card"><h3>Diagnostic plots</h3><div class="gallery">
+    {% for p in plots %}<figure class="chart"><img src="{{ p }}" loading="lazy"></figure>{% endfor %}
+  </div></div>
+  <div class="card"><h3>Top features</h3>
+    {% if feature_importance %}<table class="kv bars">{% set maxv = feature_importance[0].importance %}
+      {% for f in feature_importance %}<tr><td>{{ f.feature }}</td>
+        <td><span class="bar" style="width: {{ (100 * f.importance / maxv)|round(0) }}%"></span></td></tr>{% endfor %}
+    </table>{% else %}<p class="muted">Not available for this model.</p>{% endif %}
+  </div>
+</div>
+<div class="card"><h3>Post-modelling insights</h3>
+  <ul class="insights">{% for b in post_insights %}<li>{{ b }}</li>{% endfor %}</ul>
+</div>
+{% if snippet %}
+<div class="card"><h3>Use this model</h3>
+  <p class="muted">The download bundles the model with this snippet and the column list, so it is ready to run anywhere.</p>
+  <pre class="code-block"><code>{{ snippet }}</code></pre>
+</div>
+{% endif %}
+<div class="actions">
+  <button class="btn primary" type="button" data-go="report" data-sid="{{ sid }}">Read the analysis</button>
+  <a class="btn" href="{{ url_for('dashboard', sid=sid) }}" target="_blank" rel="noopener">Open dashboard</a>
+  <button class="btn" type="button" data-go="ask" data-sid="{{ sid }}">Ask a question</button>
+  <button class="btn" type="button" data-go="models" data-sid="{{ sid }}">Try another model</button>
+  {% if task.task_type not in ('clustering', 'timeseries') %}
+  <button class="btn" type="button" data-go="predict" data-sid="{{ sid }}">Predict on new data</button>{% endif %}
+  {% if task.task_type != 'clustering' %}
+  <a class="btn" href="{{ url_for('download_route', sid=sid) }}">Download model and code</a>{% endif %}
+  {% if can_tune %}<button class="btn" type="button" data-go="tune" data-sid="{{ sid }}">Tune hyperparameters</button>{% endif %}
+  <button class="btn" type="button" data-go="restart">Start a new run</button>
+</div>

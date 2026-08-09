@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoDS Copilot console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="shell">
+    <aside class="rail">
+      <a href="/" class="brand"><span class="brand-name">AutoDS</span></a>
+      <div class="rail-tag">Data science console</div>
+      <ol class="rail-steps" id="rail">
+        {% for num, label, code in [('1','Upload','load'),('2','Explore','eda'),('3','Clean','prep'),('4','Model','fit'),('5','Results','eval')] %}
+        <li class="rstep {% if num=='1' %}active{% endif %}" id="step-{{ num }}">
+          <span class="rnode"></span>
+          <span class="rnum">{{ '%02d'|format(num|int) }}</span>
+          <span class="rlabel">{{ label }}</span>
+          <span class="rcode">{{ code }}</span>
+          <span class="rart"></span>
+        </li>
+        {% endfor %}
+      </ol>
+      <div class="rail-links">
+        <button class="rail-link" id="openAlgos"><span class="rl-ico">◦</span> Algorithms</button>
+        <a class="rail-link" href="/about" target="_blank" rel="noopener"><span class="rl-ico">◦</span> About AutoDS</a>
+      </div>
+      <div class="rail-foot"><span class="dot"></span> pipeline ready
+        <div class="rail-stack">scikit-learn and friends</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="stagewrap"><div class="container" id="stage"></div></div>
+      <section class="console">
+        <div class="console-head"><span>Run log</span><span id="cstatus">idle</span></div>
+        <div class="clog" id="clog"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="overlay-backdrop" data-close></div>
+    <aside class="overlay-panel">
+      <div class="overlay-head"><h2 id="ovTitle">The algorithm hub</h2>
+        <button class="btn sm" data-close>Close</button></div>
+      <div class="overlay-body" id="ovBody"><p class="muted">Loading…</p></div>
+    </aside>
+  </div>
+
+  <template id="uploadTpl">
+    <h1>Load a dataset</h1>
+    <p class="lede">Upload a CSV or spreadsheet, or start with one of the samples. AutoDS reads it,
+    shows you what is inside, and recommends how to clean and model it. You approve each step.</p>
+    <form data-form data-submit="upload" class="card" enctype="multipart/form-data">
+      <label class="field"><span>Upload a file</span>
+        <input type="file" name="file" accept=".csv,.tsv,.xlsx,.xls,.json"></label>
+      {% if samples %}
+      <div class="or">or start with a sample</div>
+      <label class="field"><span>Sample dataset</span>
+        <select name="sample"><option value="">(none)</option>
+          {% for s in samples %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select></label>
+      {% endif %}
+      <label class="field"><span>Target column <em>(optional, leave blank to auto detect or cluster)</em></span>
+        <input type="text" name="target" placeholder="e.g. churned"></label>
+      <button class="btn primary" type="submit">Analyse →</button>
+    </form>
+  </template>
+
+<script>
+(function(){
+  const stage = document.getElementById('stage');
+  const clog  = document.getElementById('clog');
+  const cstat = document.getElementById('cstatus');
+  const state = { sid:null };
+
+  const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+  function append(text){
+    const d = document.createElement('div');
+    d.className = 'cline';
+    d.innerHTML = '<span class="cprompt">&rsaquo;</span> ' + esc(text);
+    clog.appendChild(d); clog.scrollTop = clog.scrollHeight;
+  }
+  function log(lines){ (lines||[]).forEach((ln,i)=> setTimeout(()=>append(ln), i*240)); }
+  function busy(on){ cstat.textContent = on ? 'running…' : 'idle'; cstat.style.color = on ? 'var(--cyan)' : ''; }
+
+  function spark(vals){
+    const max = Math.max.apply(null, vals) || 1, w = 92, h = 22, n = vals.length;
+    const bars = vals.map((v,i)=>{
+      const bh = Math.max(2, Math.round(v/max*h));
+      return `<rect x="${(i*(w/n)).toFixed(1)}" y="${(h-bh).toFixed(1)}" width="${(w/n-1.2).toFixed(1)}" height="${bh}" rx="1"/>`;
+    }).join('');
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${bars}</svg>`;
+  }
+  function renderArt(step, art){
+    const slot = document.querySelector('#step-'+step+' .rart'); if(!slot) return;
+    let html = '';
+    if(art.spark && art.spark.length) html += spark(art.spark);
+    if(art.badge) html += '<span class="rbadge">'+esc(art.badge)+'</span>';
+    if(art.sub)   html += '<span class="rsub">'+esc(art.sub)+'</span>';
+    slot.innerHTML = html;
+  }
+  function setRail(rail){
+    if(!rail) return;
+    if(rail.active){
+      for(let i=1;i<=5;i++){
+        const el = document.getElementById('step-'+i);
+        el.classList.remove('active');
+        if(i < rail.active) el.classList.add('done');
+        else el.classList.remove('done');
+        if(i === rail.active) el.classList.add('active');
+      }
+    }
+    if(rail.arts) for(const k in rail.arts) renderArt(k, rail.arts[k]);
+  }
+
+  async function call(url, opts){
+    busy(true);
+    try{
+      const r = await fetch(url, opts);
+      const j = await r.json().catch(()=>({error:'Bad response'}));
+      if(!r.ok || j.error) throw new Error(j.error || ('HTTP '+r.status));
+      return j;
+    } finally { busy(false); }
+  }
+  function render(data){
+    stage.innerHTML = data.html;
+    document.querySelector('.stagewrap').scrollTo({top:0, behavior:'smooth'});
+    log(data.log); setRail(data.rail);
+  }
+
+  // ----- upload (special: upload -> explore) -----
+  async function doUpload(form){
+    const fd = new FormData(form);
+    append('[Loader] uploading dataset…');
+    try{
+      const up = await call('/api/upload', {method:'POST', body:fd});
+      state.sid = up.sid; log(up.log);
+      const data = await call('/api/explore/'+state.sid);
+      render(data);
+    }catch(err){ append('⚠ '+err.message); }
+  }
+
+  // ----- delegated form submits -----
+  document.addEventListener('submit', async e=>{
+    const form = e.target.closest('[data-form]'); if(!form) return;
+    e.preventDefault();
+    const act = form.dataset.submit;
+    if(act === 'upload') return doUpload(form);
+    try{
+      const data = await call('/api/'+act+'/'+state.sid, {method:'POST', body:new FormData(form)});
+      render(data);
+    }catch(err){ append('⚠ '+err.message); }
+  });
+
+  // ----- delegated button navigation -----
+  document.addEventListener('click', async e=>{
+    const go = e.target.closest('[data-go]'); if(!go) return;
+    const act = go.dataset.go;
+    if(act === 'restart') return restart();
+    e.preventDefault();
+    try{
+      let url, opts;
+      if(act === 'clean')       url = '/api/clean/'+state.sid;
+      else if(act === 'leaderboard') url = '/api/leaderboard/'+state.sid;
+      else if(act === 'models') url = '/api/models/'+state.sid;      // GET
+      else if(act === 'predict') url = '/api/predict/'+state.sid;    // GET (form)
+      else if(act === 'report')  url = '/api/report/'+state.sid;     // GET
+      else if(act === 'ask')     url = '/api/ask/'+state.sid;        // GET (form)
+      else if(act === 'tune')  { url = '/api/tune/'+state.sid; opts = {method:'POST'}; }
+      else return;
+      render(await call(url, opts));
+    }catch(err){ append('⚠ '+err.message); }
+  });
+
+  // ----- target change in explore -----
+  document.addEventListener('change', async e=>{
+    const sel = e.target.closest('[data-target]'); if(!sel) return;
+    try{ render(await call('/api/explore/'+state.sid+'?target='+encodeURIComponent(sel.value))); }
+    catch(err){ append('⚠ '+err.message); }
+  });
+
+  function restart(){
+    state.sid = null; clog.innerHTML = '';
+    for(let i=1;i<=5;i++){
+      const el = document.getElementById('step-'+i);
+      el.classList.remove('active','done');
+      el.querySelector('.rart').innerHTML = '';
+    }
+    document.getElementById('step-1').classList.add('active');
+    stage.innerHTML = document.getElementById('uploadTpl').innerHTML;
+    append('[system] ready, load a dataset to begin');
+  }
+
+  restart();
+})();
+</script>
+<script>
+(function(){
+  const ov=document.getElementById("overlay"), body=document.getElementById("ovBody");
+  let loaded=false;
+  function open(){ ov.hidden=false; requestAnimationFrame(()=>ov.classList.add("show"));
+    if(!loaded){ loaded=true; fetch("/api/algorithms").then(r=>r.json()).then(render).catch(()=>{ body.innerHTML='<p class="muted">Could not load.</p>'; }); } }
+  function close(){ ov.classList.remove("show"); setTimeout(()=>ov.hidden=true, 200); }
+  function render(d){
+    let h=`<p class="muted ov-intro">${d.total} algorithms in the hub. For any task, AutoDS cross checks the whole group on your data and recommends the winner.</p>`;
+    for(const label in d.groups){
+      h+=`<div class="ov-task"><div class="ov-task-h">${label}</div>`;
+      d.groups[label].forEach(g=>{
+        h+=`<div class="cat-fam"><div class="cat-fam-h">${g.family} <span>${g.models.length}</span></div><div class="algo-grid">`;
+        g.models.forEach(m=>{ h+=`<div class="algo"><b>${m.name}</b><span>${m.why}</span></div>`; });
+        h+=`</div></div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`<p class="muted" style="margin-top:18px">XGBoost and LightGBM join automatically when installed. <a href="/algorithms" target="_blank" rel="noopener">Open the full catalog</a>.</p>`;
+    body.innerHTML=h;
+  }
+  document.getElementById("openAlgos").onclick=open;
+  ov.querySelectorAll("[data-close]").forEach(el=>el.onclick=close);
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !ov.hidden) close(); });
+})();
+</script>
+</body>
+</html>

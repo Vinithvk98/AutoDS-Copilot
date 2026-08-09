@@ -1,0 +1,17 @@
+{% set steps = [
+  ('1','Upload','load'),
+  ('2','Explore','eda'),
+  ('3','Clean','prep'),
+  ('4','Model','fit'),
+  ('5','Results','eval')
+] %}
+<ol class="rail-steps">
+  {% for num, label, code in steps %}
+    <li class="rstep {% if num == active %}active{% elif num < active %}done{% endif %}">
+      <span class="rnode"></span>
+      <span class="rnum">{{ '%02d'|format(num|int) }}</span>
+      <span class="rlabel">{{ label }}</span>
+      <span class="rcode">{{ code }}</span>
+    </li>
+  {% endfor %}
+</ol>

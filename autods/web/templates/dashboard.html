@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard, {{ d.dataset }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="dash">
+    <header class="dash-head">
+      <div>
+        <a href="{{ url_for('index') }}" class="brand"><span class="brand-name">AutoDS</span></a>
+        <h1>Results dashboard</h1>
+        <p class="muted">{{ d.task }} on {{ d.dataset }}{% if d.target %}, predicting {{ d.target }}{% endif %},
+        using {{ d.model }}.</p>
+      </div>
+      <button class="btn" onclick="window.print()">Save as PDF</button>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="data">Data analysis</button>
+      <button class="tab" data-tab="model">Model</button>
+      <button class="tab" data-tab="insights">Insights</button>
+    </nav>
+
+    <!-- filter bar (applies to the Data tab) -->
+    <div class="filterbar" id="filterbar" hidden>
+      <span class="fb-label">Filter data by</span>
+      <select id="fCol"><option value="">nothing</option></select>
+      <select id="fVal" disabled><option value="">all</option></select>
+      <button class="btn sm" id="fClear">Clear</button>
+      <span class="fb-count" id="fCount"></span>
+    </div>
+
+    <!-- OVERVIEW -->
+    <section class="panel active" id="p-overview">
+      <div class="kpis">
+        {% for k in d.kpis %}
+        <div class="kpi"><span class="kpi-val">{{ k.value if k.value is not none else '—' }}</span>
+          <span class="kpi-label">{{ k.label }}</span></div>
+        {% endfor %}
+      </div>
+      {% if d.cv %}<p class="muted dash-cv">Cross-validated {{ d.cv.metric }} across
+      {{ d.cv.folds }} folds is {{ d.cv.mean }} give or take {{ d.cv.std }}.</p>{% endif %}
+      <div class="dash-grid">
+        <div class="card"><h3>Data health</h3>
+          <div class="health"><div class="health-num" id="healthNum"></div>
+            <div class="health-sub" id="healthSub"></div></div></div>
+        <div class="card"><h3>Column types</h3><div class="chart-box"><canvas id="cTypes"></canvas></div></div>
+        <div class="card wide"><h3>Missing values by column</h3>
+          <div class="chart-box"><canvas id="cMissing"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- DATA ANALYSIS -->
+    <section class="panel" id="p-data">
+      <div class="dash-grid">
+        <div class="card"><div class="card-ctrl"><h3>Distribution</h3>
+          <select id="distCol" class="mini"></select></div>
+          <div class="chart-box"><canvas id="cExplore"></canvas></div>
+          <p class="muted" id="distStats"></p></div>
+        <div class="card"><div class="card-ctrl"><h3>Compare to target</h3>
+          <select id="relCol" class="mini"></select></div>
+          <div class="chart-box"><canvas id="cRel"></canvas></div></div>
+        <div class="card wide"><h3>Correlation between numeric columns</h3>
+          <div id="corr" class="corrwrap"></div></div>
+        <div class="card wide"><div class="card-ctrl"><h3>Data table</h3>
+          <span class="muted" id="tableInfo"></span></div>
+          <div class="tablewrap"><table class="dtable" id="dtable"></table></div></div>
+      </div>
+    </section>
+
+    <!-- MODEL -->
+    <section class="panel" id="p-model">
+      <div class="metrics" id="modelMetrics"></div>
+      <div class="dash-grid">
+        <div class="card"><h3>Model leaderboard ({{ d.leaderboard_metric }})</h3>
+          <div class="chart-box"><canvas id="cLeader"></canvas></div></div>
+        <div class="card"><h3>What drives the prediction</h3>
+          <div class="chart-box"><canvas id="cFeat"></canvas></div></div>
+        <div class="card" id="wConf" hidden><h3>Confusion matrix</h3><div id="confusion"></div></div>
+        <div class="card" id="wScatter" hidden><h3>Predicted vs actual</h3>
+          <div class="chart-box"><canvas id="cScatter"></canvas></div></div>
+        <div class="card wide" id="wSeries" hidden><h3>Forecast vs actual</h3>
+          <div class="chart-box"><canvas id="cSeries"></canvas></div></div>
+        <div class="card" id="wRoc" hidden><h3>ROC curve</h3>
+          <div class="chart-box"><canvas id="cRoc"></canvas></div></div>
+        <div class="card" id="wPr" hidden><h3>Precision and recall curve</h3>
+          <div class="chart-box"><canvas id="cPr"></canvas></div></div>
+        <div class="card" id="wPerClass" hidden><h3>Per-class precision and recall</h3>
+          <div class="chart-box"><canvas id="cPerClass"></canvas></div></div>
+        <div class="card" id="wCv" hidden><h3>Cross-validation folds</h3>
+          <div class="chart-box"><canvas id="cCv"></canvas></div></div>
+        <div class="card" id="wCluster" hidden><h3>Cluster sizes</h3>
+          <div class="chart-box"><canvas id="cCluster"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section class="panel" id="p-insights">
+      <div class="dash-grid">
+        <div class="card wide"><h3>Key findings</h3><ul class="insights" id="findings"></ul></div>
+        <div class="card"><h3>Data checks</h3><ul class="checklist" id="ins-checks"></ul></div>
+        <div class="card"><h3>Grounded guidance</h3><ul class="insights" id="guidance"></ul></div>
+      </div>
+    </section>
+  </div>
+
+<script>
+const D = {{ d|tojson }};
+const INK="#1b1d23", MUT="#8b90a0", ACC="#2a44b8", LINE="#e9e7e1", WARM="#a8551f", OK="#1f7a54";
+const PAL=["#2a44b8","#1f7a54","#a8551f","#7a1f6b","#0e6f8f","#8a6d1a","#3f51b5","#b0561f"];
+Chart.defaults.font.family="'IBM Plex Sans', sans-serif"; Chart.defaults.color=MUT;
+
+const colIndex = n => D.columns.findIndex(c=>c.name===n);
+const isNum = n => (D.columns.find(c=>c.name===n)||{}).type==="numeric";
+const numCols = D.columns.filter(c=>c.type==="numeric").map(c=>c.name);
+const catCols = D.columns.filter(c=>c.type==="category").map(c=>c.name);
+const feats = D.columns.filter(c=>!c.is_target).map(c=>c.name);
+let filter = {col:null, val:null};
+const charts = {};
+function draw(id, cfg){ if(charts[id]) charts[id].destroy(); const el=document.getElementById(id);
+  if(el) charts[id]=new Chart(el, cfg); }
+
+function rows(){ if(!filter.col || filter.val===null || filter.val==='') return D.rows;
+  const i=colIndex(filter.col); return D.rows.filter(r=> String(r[i])===String(filter.val)); }
+function vals(name, rs){ const i=colIndex(name); return rs.map(r=>r[i]); }
+function nums(arr){ return arr.filter(v=>v!==null&&v!==undefined&&v!=='' && !isNaN(v)).map(Number); }
+
+function histogram(arr, bins=12){ const a=nums(arr); if(!a.length) return null;
+  let lo=Math.min(...a), hi=Math.max(...a); if(lo===hi) hi=lo+1; const w=(hi-lo)/bins;
+  const c=new Array(bins).fill(0); a.forEach(v=>{ let b=Math.floor((v-lo)/w); if(b>=bins)b=bins-1; if(b<0)b=0; c[b]++; });
+  const labels=c.map((_,i)=>Math.round(lo+w*i)); return {labels, values:c, a}; }
+function counts(arr, top=12){ const m={}; arr.forEach(v=>{ const k=(v===null||v===undefined||v==='')?'(missing)':String(v); m[k]=(m[k]||0)+1; });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,top); }
+function pearson(xs, ys){ const p=[]; for(let i=0;i<xs.length;i++){ const a=xs[i],b=ys[i];
+  if(a!==null&&b!==null&&a!==''&&b!==''&&!isNaN(a)&&!isNaN(b)) p.push([+a,+b]); }
+  const n=p.length; if(n<3) return 0; const mx=p.reduce((s,q)=>s+q[0],0)/n, my=p.reduce((s,q)=>s+q[1],0)/n;
+  let sxy=0,sx=0,sy=0; p.forEach(q=>{ sxy+=(q[0]-mx)*(q[1]-my); sx+=(q[0]-mx)**2; sy+=(q[1]-my)**2; });
+  return (sx&&sy)? sxy/Math.sqrt(sx*sy):0; }
+
+function barCfg(labels, values, horizontal){ return {type:"bar",
+  data:{labels, datasets:[{data:values, backgroundColor:ACC, borderRadius:4}]},
+  options:{indexAxis:horizontal?"y":"x", responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}}, scales:{x:{grid:{color:LINE}}, y:{grid:{color:LINE}}}}}; }
+function doughnutCfg(labels, values){ return {type:"doughnut",
+  data:{labels, datasets:[{data:values, backgroundColor:PAL, borderColor:"#fff", borderWidth:2}]},
+  options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}}}}; }
+
+/* ---------- OVERVIEW ---------- */
+function renderOverview(){
+  const p=D.profile;
+  document.getElementById("healthNum").textContent = p.completeness + "%";
+  document.getElementById("healthSub").innerHTML =
+    "complete &middot; " + (p.duplicates||0) + " duplicate rows &middot; " +
+    p.n_rows + " rows &times; " + p.n_cols + " columns";
+  draw("cTypes", doughnutCfg(["numeric","categorical"], [p.type_split.numeric, p.type_split.categorical]));
+  if(p.missing.labels.length) draw("cMissing", barCfg(p.missing.labels, p.missing.values, false));
+  else document.getElementById("cMissing").parentElement.innerHTML='<p class="muted">No missing values.</p>';
+}
+
+/* ---------- DATA ANALYSIS ---------- */
+function fillSelect(el, options, selected){ el.innerHTML=""; options.forEach(o=>{ const op=document.createElement("option");
+  op.value=o; op.textContent=o; if(o===selected) op.selected=true; el.appendChild(op); }); }
+
+function renderExplore(){
+  const rs=rows(); const name=document.getElementById("distCol").value;
+  const arr=vals(name, rs);
+  if(isNum(name)){ const h=histogram(arr); if(!h) return;
+    draw("cExplore", barCfg(h.labels, h.values, false));
+    const a=h.a, mean=a.reduce((s,v)=>s+v,0)/a.length;
+    document.getElementById("distStats").textContent =
+      `min ${Math.min(...a).toFixed(2)}, max ${Math.max(...a).toFixed(2)}, mean ${mean.toFixed(2)}`;
+  } else { const c=counts(arr); draw("cExplore", barCfg(c.map(x=>x[0]), c.map(x=>x[1]), true));
+    document.getElementById("distStats").textContent = `${new Set(arr).size} distinct values`; }
+}
+function renderRel(){
+  const rs=rows(); const f=document.getElementById("relCol").value; const tgt=D.target;
+  if(!tgt){ document.getElementById("cRel").parentElement.innerHTML='<p class="muted">No target column.</p>'; return; }
+  const ti=colIndex(tgt), fi=colIndex(f);
+  if(isNum(tgt)){ // numeric target: mean target by feature (category) or scatter (numeric)
+    if(isNum(f)){ const pts=rs.map(r=>({x:+r[fi], y:+r[ti]})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
+      draw("cRel", {type:"scatter", data:{datasets:[{data:pts, backgroundColor:"rgba(42,68,184,.45)"}]},
+        options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+          scales:{x:{title:{display:true,text:f},grid:{color:LINE}}, y:{title:{display:true,text:tgt},grid:{color:LINE}}}}});
+    } else { const groups={}; rs.forEach(r=>{ const k=String(r[fi]); if(!groups[k])groups[k]=[]; if(!isNaN(r[ti]))groups[k].push(+r[ti]); });
+      const labels=Object.keys(groups).slice(0,12); const means=labels.map(k=>groups[k].reduce((s,v)=>s+v,0)/(groups[k].length||1));
+      draw("cRel", barCfg(labels, means.map(v=>+v.toFixed(2)), true)); }
+  } else { // categorical target: stacked counts of target within feature buckets
+    const cats=[...new Set(rs.map(r=>String(r[ti])))].slice(0,8);
+    let labels, groups;
+    if(isNum(f)){ const h=histogram(vals(f,rs)); labels=h?h.labels.map(String):[]; // bucket numeric feature
+      const lo=Math.min(...nums(vals(f,rs))), hi=Math.max(...nums(vals(f,rs))), w=(hi-lo)/(labels.length||1);
+      groups=labels.map(()=>({})); rs.forEach(r=>{ let b=Math.floor((+r[fi]-lo)/w); if(isNaN(b))return; if(b>=labels.length)b=labels.length-1; if(b<0)b=0;
+        const k=String(r[ti]); groups[b][k]=(groups[b][k]||0)+1; });
+    } else { labels=[...new Set(rs.map(r=>String(r[fi])))].slice(0,12); groups=labels.map(l=>{ const o={}; rs.forEach(r=>{ if(String(r[fi])===l){ const k=String(r[ti]); o[k]=(o[k]||0)+1; } }); return o; }); }
+    const ds=cats.map((ct,i)=>({label:ct, data:labels.map((_,li)=>groups[li][ct]||0), backgroundColor:PAL[i%PAL.length]}));
+    draw("cRel", {type:"bar", data:{labels, datasets:ds},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}},
+        scales:{x:{stacked:true,grid:{color:LINE}}, y:{stacked:true,grid:{color:LINE}}}}});
+  }
+}
+function renderCorr(){
+  const rs=rows(); const cols=numCols; if(cols.length<2){ document.getElementById("corr").innerHTML='<p class="muted">Need at least two numeric columns.</p>'; return; }
+  const M=cols.map(a=> cols.map(b=> pearson(vals(a,rs), vals(b,rs)) ));
+  let h='<table class="cm corr"><tr><th></th>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  M.forEach((row,i)=>{ h+=`<tr><th>${cols[i]}</th>`; row.forEach(v=>{ const r=Math.max(-1,Math.min(1,v));
+    const col = r>=0? `rgba(42,68,184,${(Math.abs(r)*0.8+0.05).toFixed(2)})` : `rgba(168,85,31,${(Math.abs(r)*0.8+0.05).toFixed(2)})`;
+    h+=`<td title="${r.toFixed(2)}" style="background:${col};color:${Math.abs(r)>0.55?'#fff':INK}">${r.toFixed(2)}</td>`; }); h+='</tr>'; });
+  h+='</table>'; document.getElementById("corr").innerHTML=h;
+}
+let sortState={col:0, dir:1};
+function renderTable(){
+  const rs=rows(); const cols=D.columns.map(c=>c.name); const show=rs.slice(0,200);
+  show.sort((a,b)=>{ const x=a[sortState.col], y=b[sortState.col];
+    if(x===null)return 1; if(y===null)return -1; if(!isNaN(x)&&!isNaN(y)) return (x-y)*sortState.dir; return String(x).localeCompare(String(y))*sortState.dir; });
+  let h='<thead><tr>'+cols.map((c,i)=>`<th data-i="${i}">${c}${sortState.col===i?(sortState.dir>0?' ▲':' ▼'):''}</th>`).join('')+'</tr></thead><tbody>';
+  show.forEach(r=>{ h+='<tr>'+r.map(v=>`<td>${v===null?'':v}</td>`).join('')+'</tr>'; });
+  h+='</tbody>'; const t=document.getElementById("dtable"); t.innerHTML=h;
+  t.querySelectorAll("th").forEach(th=> th.onclick=()=>{ const i=+th.dataset.i; sortState.dir = (sortState.col===i)? -sortState.dir:1; sortState.col=i; renderTable(); });
+  document.getElementById("tableInfo").textContent = `${rs.length} rows${filter.col?' (filtered)':''}, showing first ${show.length}`;
+}
+function renderData(){ renderExplore(); renderRel(); renderCorr(); renderTable();
+  document.getElementById("fCount").textContent = filter.col? `${rows().length} of ${D.rows.length} rows` : ''; }
+
+/* ---------- MODEL ---------- */
+function renderModel(){
+  const mm=document.getElementById("modelMetrics");
+  mm.innerHTML=Object.entries(D.metrics).map(([k,v])=>`<div class="metric"><span class="mval">${v}</span><span class="mkey">${k}</span></div>`).join('');
+  if(D.leaderboard.length) draw("cLeader", barCfg(D.leaderboard.map(r=>r.name), D.leaderboard.map(r=>r.score), true));
+  if(D.features.length) draw("cFeat", barCfg(D.features.map(f=>f.name), D.features.map(f=>f.value), true));
+  if(D.confusion){ show("wConf"); renderConfusion(); }
+  if(D.scatter && !D.series){ show("wScatter"); draw("cScatter", {type:"scatter",
+    data:{datasets:[{data:D.scatter.map(p=>({x:p[0],y:p[1]})), backgroundColor:"rgba(42,68,184,.5)"}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{x:{title:{display:true,text:"actual"},grid:{color:LINE}}, y:{title:{display:true,text:"predicted"},grid:{color:LINE}}}}}); }
+  if(D.series){ show("wSeries"); const idx=D.series.actual.map((_,i)=>i+1);
+    draw("cSeries", {type:"line", data:{labels:idx, datasets:[
+      {label:"actual", data:D.series.actual, borderColor:ACC, pointRadius:0, tension:.2},
+      {label:"forecast", data:D.series.pred, borderColor:WARM, pointRadius:0, tension:.2}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}}, scales:{x:{grid:{color:LINE}}, y:{grid:{color:LINE}}}}}); }
+  if(D.roc){ show("wRoc"); draw("cRoc", {type:"line", data:{labels:D.roc.fpr, datasets:[
+      {label:"model", data:D.roc.fpr.map((f,i)=>({x:f,y:D.roc.tpr[i]})), borderColor:ACC, pointRadius:0},
+      {label:"chance", data:[{x:0,y:0},{x:1,y:1}], borderColor:MUT, borderDash:[4,4], pointRadius:0}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}},
+        scales:{x:{type:"linear",title:{display:true,text:"false positive rate"},grid:{color:LINE}}, y:{title:{display:true,text:"true positive rate"},grid:{color:LINE}}}}}); }
+  if(D.pr){ show("wPr"); draw("cPr", {type:"line", data:{datasets:[
+      {label:"model", data:D.pr.recall.map((r,i)=>({x:r,y:D.pr.precision[i]})), borderColor:OK, pointRadius:0}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{x:{type:"linear",title:{display:true,text:"recall"},grid:{color:LINE}}, y:{title:{display:true,text:"precision"},grid:{color:LINE}}}}}); }
+  if(D.per_class && D.per_class.length){ show("wPerClass");
+    draw("cPerClass", {type:"bar", data:{labels:D.per_class.map(c=>c.label), datasets:[
+      {label:"precision", data:D.per_class.map(c=>c.precision), backgroundColor:ACC},
+      {label:"recall", data:D.per_class.map(c=>c.recall), backgroundColor:OK}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}}, scales:{x:{grid:{color:LINE}}, y:{grid:{color:LINE}}}}}); }
+  if(D.cv && D.cv.scores){ show("wCv");
+    draw("cCv", barCfg(D.cv.scores.map((_,i)=>"fold "+(i+1)), D.cv.scores, false)); }
+  if(D.cluster_sizes){ show("wCluster"); draw("cCluster", doughnutCfg(Object.keys(D.cluster_sizes), Object.values(D.cluster_sizes))); }
+}
+function show(id){ document.getElementById(id).hidden=false; }
+function renderConfusion(){ const {labels, matrix}=D.confusion; let max=0; matrix.forEach(r=>r.forEach(v=>{ if(v>max)max=v; }));
+  let h='<table class="cm"><tr><th></th><th colspan="'+labels.length+'">predicted</th></tr><tr><th></th>'+labels.map(l=>`<th>${l}</th>`).join('')+'</tr>';
+  matrix.forEach((row,i)=>{ h+=`<tr><th>${labels[i]}</th>`; row.forEach(v=>{ const a=max?v/max:0;
+    h+=`<td style="background:rgba(42,68,184,${(0.08+a*0.72).toFixed(2)});color:${a>0.5?'#fff':INK}">${v}</td>`; }); h+='</tr>'; });
+  document.getElementById("confusion").innerHTML=h+'</table>'; }
+
+/* ---------- INSIGHTS ---------- */
+function renderInsights(){
+  document.getElementById("findings").innerHTML = D.insights.findings.map(b=>`<li>${b}</li>`).join('') || '<li class="muted">No findings.</li>';
+  document.getElementById("guidance").innerHTML = D.insights.guidance.map(b=>`<li>${b}</li>`).join('') || '<li class="muted">No guidance.</li>';
+  document.getElementById("ins-checks").innerHTML = (D.checks||[]).map(f=>
+    `<li class="chk ${f.level}"><span class="chk-tag">${f.level}</span><div><b>${f.title}</b><span class="chk-detail">${f.detail}</span></div></li>`).join('') || '<li class="muted">No issues found.</li>';
+}
+
+/* ---------- tabs + filter wiring ---------- */
+const built={};
+function activate(tab){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===tab));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active", p.id==="p-"+tab));
+  document.getElementById("filterbar").hidden = (tab!=="data");
+  if(!built[tab]){ built[tab]=true;
+    if(tab==="data") renderData(); else if(tab==="model") renderModel(); else if(tab==="insights") renderInsights(); }
+  else { Object.values(charts).forEach(c=>c.resize()); }
+}
+document.querySelectorAll(".tab").forEach(t=> t.onclick=()=>activate(t.dataset.tab));
+
+// distribution + relationship selectors
+fillSelect(document.getElementById("distCol"), D.columns.map(c=>c.name), numCols[0]||D.columns[0].name);
+fillSelect(document.getElementById("relCol"), feats, feats[0]);
+document.getElementById("distCol").onchange=renderExplore;
+document.getElementById("relCol").onchange=renderRel;
+
+// global filter
+const fCol=document.getElementById("fCol"), fVal=document.getElementById("fVal");
+fillSelect(fCol, ["", ...catCols], "");
+fCol.onchange=()=>{ filter.col=fCol.value||null; filter.val=null;
+  if(filter.col){ const vs=[...new Set(D.rows.map(r=>String(r[colIndex(filter.col)])))].slice(0,40);
+    fVal.disabled=false; fillSelect(fVal, ["", ...vs], ""); } else { fVal.disabled=true; fVal.innerHTML='<option value="">all</option>'; }
+  renderData(); };
+fVal.onchange=()=>{ filter.val=fVal.value||null; renderData(); };
+document.getElementById("fClear").onclick=()=>{ fCol.value=""; fVal.innerHTML='<option value="">all</option>'; fVal.disabled=true; filter={col:null,val:null}; renderData(); };
+
+renderOverview();
+</script>
+</body>
+</html>

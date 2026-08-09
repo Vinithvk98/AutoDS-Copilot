@@ -1,0 +1,40 @@
+<h1>Choose a model</h1>
+<p class="lede">Recommended models for a <b>{{ task.task_type }}</b> task, grouped by family.
+The default is pre-selected. Pick another or compare them all.</p>
+{% if sims %}
+<div class="card experience">
+  <h3>Learning from past runs</h3>
+  <p class="muted">On the most similar datasets you have run before, these did well.</p>
+  <ul class="simlist">
+    {% for r in sims %}
+    <li><b>{{ r.model }}</b> on {{ r.dataset }}
+      <span class="muted">({{ (r.similarity * 100)|round(0) }}% similar{% if r.metrics %},
+      {% set m = r.metrics %}{{ m.accuracy if m.accuracy is defined else (m.r2 if m.r2 is defined else m.f1) }}{% endif %})</span></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% if why %}
+<div class="rationale"><span class="rationale-why">Why</span> {{ why.text }}
+  <span class="rationale-src">Source, {{ why.source }}</span></div>
+{% endif %}
+<form data-form data-submit="train" data-sid="{{ sid }}">
+  {% for grp in grouped %}
+  <div class="mgroup">
+    <div class="mgroup-h">{{ grp.family }} <span>{{ grp.models|length }}</span></div>
+    <div class="modellist">
+      {% for m in grp.models %}
+      <label class="model {% if m.recommended %}rec{% endif %}">
+        <input type="radio" name="model" value="{{ m.name }}" {% if m.recommended %}checked{% endif %}>
+        <span class="mname">{{ m.name }}{% if m.recommended %} <em>· recommended</em>{% endif %}</span>
+        <span class="mwhy">{{ m.why }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  <div class="actions">
+    <button class="btn primary" type="submit">Train and evaluate</button>
+    <button class="btn" type="button" data-go="leaderboard" data-sid="{{ sid }}">Compare all models</button>
+  </div>
+</form>

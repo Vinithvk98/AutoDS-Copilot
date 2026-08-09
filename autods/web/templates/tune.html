@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block steps %}{% set active='5' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Hyperparameter tuning for {{ model_name }}</h1>
+{% if result %}
+<div class="metrics">
+  <div class="metric"><span class="mval">{{ result.best_score }}</span>
+    <span class="mkey">best {{ result.metric }}</span></div>
+</div>
+<div class="card">
+  <h3>Best parameters (grid search, cross-validated)</h3>
+  <table class="kv">
+    {% for k, v in result.best_params.items() %}
+    <tr><td>{{ k }}</td><td><span class="pill">{{ v }}</span></td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<div class="card"><p class="muted">No tuning grid is defined for this model.</p></div>
+{% endif %}
+<div class="actions">
+  <a class="btn primary" href="{{ url_for('index') }}">Start a new run</a>
+</div>
+{% endblock %}

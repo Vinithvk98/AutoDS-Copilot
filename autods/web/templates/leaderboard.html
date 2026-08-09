@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block steps %}{% set active='4' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Model leaderboard</h1>
+<p class="lede">Every candidate model, cross-validated on a <b>{{ task.task_type }}</b>
+task and ranked by <code>{{ board.metric }}</code> (higher is better). Pick one and train it.</p>
+
+<form method="post" action="{{ url_for('train_route', sid=sid) }}">
+  <div class="card">
+    <table class="kv board">
+      <tr><th></th><th>Model</th><th>{{ board.metric }}</th><th>± std</th></tr>
+      {% for r in board.rows %}
+      <tr class="{% if r.best %}bestrow{% endif %}">
+        <td><input type="radio" name="model" value="{{ r.name }}"
+             {% if r.best %}checked{% endif %} {% if r.score is none %}disabled{% endif %}></td>
+        <td>{{ r.name }}{% if r.best %} <span class="pill">best</span>{% endif %}
+            {% if r.n_clusters is defined %}<span class="muted">· {{ r.n_clusters }} clusters</span>{% endif %}</td>
+        <td>{% if r.score is not none %}{{ r.score }}{% else %}<span class="muted">n/a</span>{% endif %}</td>
+        <td>{% if r.std is not none %}{{ r.std }}{% else %}·{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('models', sid=sid) }}">← Back to picker</a>
+    <button class="btn primary" type="submit">Train selected →</button>
+  </div>
+</form>
+{% endblock %}

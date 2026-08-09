@@ -1,0 +1,8 @@
+{% include "partials/_report_body.html" %}
+<div class="actions">
+  <a class="btn" href="{{ url_for('report_page', sid=sid) }}" target="_blank" rel="noopener">Open as a page</a>
+  <a class="btn" href="{{ url_for('dashboard', sid=sid) }}" target="_blank" rel="noopener">Open dashboard</a>
+  <button class="btn" type="button" data-go="ask" data-sid="{{ sid }}">Ask a question</button>
+  <button class="btn" type="button" data-go="predict" data-sid="{{ sid }}">Predict on new data</button>
+  <button class="btn primary" type="button" data-go="restart">Start a new run</button>
+</div>

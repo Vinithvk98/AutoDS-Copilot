@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block steps %}{% set active='3' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Review the cleaning plan</h1>
+<p class="lede">These are the assistant's recommendations. Approve as-is, or adjust
+what gets dropped, then continue. Imputation runs inside the model pipeline to
+avoid data leakage.</p>
+
+<form method="post" action="{{ url_for('models', sid=sid) }}">
+  <div class="card">
+    <h3>What the assistant found</h3>
+    <ul class="insights">
+      {% for n in plan.notes %}<li>{{ n }}</li>{% endfor %}
+    </ul>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Columns to drop</h3>
+      {% if plan.drop_columns %}
+        {% for c in plan.drop_columns %}
+        <label class="check"><input type="checkbox" name="drop" value="{{ c }}" checked> {{ c }}</label>
+        {% endfor %}
+      {% else %}<p class="muted">None recommended.</p>{% endif %}
+      <label class="check"><input type="checkbox" name="drop_duplicates"
+        {% if plan.drop_duplicates %}checked{% endif %}> Remove duplicate rows</label>
+    </div>
+
+    <div class="card">
+      <h3>Imputation plan</h3>
+      {% if plan.impute %}
+      <table class="kv">
+        {% for col, strat in plan.impute.items() %}
+        <tr><td>{{ col }}</td><td><span class="pill">{{ strat }}</span></td></tr>
+        {% endfor %}
+      </table>
+      {% else %}<p class="muted">No imputation needed.</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn primary" type="submit">Approve &amp; recommend models →</button>
+  </div>
+</form>
+{% endblock %}

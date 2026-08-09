@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block steps %}{% set active='4' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Choose a model</h1>
+<p class="lede">Recommended models for a <b>{{ task.task_type }}</b> task, grouped by family.
+The default is pre-selected. Pick another or compare them all.</p>
+
+<form method="post" action="{{ url_for('train_route', sid=sid) }}">
+  {% for grp in grouped %}
+  <div class="mgroup">
+    <div class="mgroup-h">{{ grp.family }} <span>{{ grp.models|length }}</span></div>
+    <div class="modellist">
+      {% for m in grp.models %}
+      <label class="model {% if m.recommended %}rec{% endif %}">
+        <input type="radio" name="model" value="{{ m.name }}" {% if m.recommended %}checked{% endif %}>
+        <span class="mname">{{ m.name }}{% if m.recommended %} <em>· recommended</em>{% endif %}</span>
+        <span class="mwhy">{{ m.why }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  <div class="actions">
+    <button class="btn primary" type="submit">Train &amp; evaluate →</button>
+    <a class="btn" href="{{ url_for('leaderboard_route', sid=sid) }}">📊 Compare all (leaderboard)</a>
+  </div>
+</form>
+{% endblock %}

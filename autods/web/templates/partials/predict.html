@@ -1,0 +1,41 @@
+{% if predictions is none %}
+<h1>Predict on new data</h1>
+<p class="lede">Upload a CSV with the same feature columns. Any target column is
+ignored. The trained <b>{{ model_name }}</b> will score every row.</p>
+<form data-form data-submit="predict" data-sid="{{ sid }}" enctype="multipart/form-data">
+  <div class="card">
+    <label class="field"><span>New data file</span>
+      <input type="file" name="file" accept=".csv,.tsv,.xlsx,.xls,.json"></label>
+    <p class="muted" style="font-family:var(--mono);font-size:12px">Required columns: {{ features|join(', ') }}</p>
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="submit">Run predictions</button>
+    <button class="btn" type="button" data-go="restart">Cancel</button>
+  </div>
+</form>
+{% else %}
+<h1>Predictions <span class="muted">· {{ model_name }}</span></h1>
+<p class="lede">{{ n }} row{{ 's' if n != 1 }} scored. Showing the first {{ shown }}.</p>
+<div class="card">
+  <div style="overflow-x:auto">
+    <table class="kv board">
+      <tr>
+        {% for c in cols %}<th>{{ c }}</th>{% endfor %}
+        <th>prediction</th>{% if has_prob %}<th>confidence</th>{% endif %}
+      </tr>
+      {% for r in predictions %}
+      <tr>
+        {% for v in r.vals %}<td>{{ v }}</td>{% endfor %}
+        <td><span class="pill">{{ r.pred }}</span></td>
+        {% if has_prob %}<td>{{ r.prob }}</td>{% endif %}
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+<div class="actions">
+  <a class="btn primary" href="{{ url_for('predict_download', sid=sid) }}">Download predictions (CSV)</a>
+  <button class="btn" type="button" data-go="predict" data-sid="{{ sid }}">Score another file</button>
+  <button class="btn" type="button" data-go="restart">Start a new run</button>
+</div>
+{% endif %}
