@@ -106,6 +106,17 @@ Bundled sample datasets: `sample_customers.csv` (classification / regression),
 Note on the port: 5050 is used because macOS AirPlay Receiver occupies 5000.
 Override with `PORT=8000 python3 run.py`.
 
+## Tests
+
+An offline pytest suite covers the engine, the leakage-safe pipeline, task
+detection, the quality guardrails, the leaderboard, the RAG retriever, and the
+agent graph. It needs no API key.
+
+```bash
+python3 -m pip install pytest
+python3 -m pytest -q
+```
+
 ## Where each skill lives
 
 | Skill | Where | What it does |

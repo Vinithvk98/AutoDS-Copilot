@@ -22,3 +22,6 @@ lightgbm>=4.0
 
 # Optional — richer LLM-written insights when OPENAI_API_KEY is set
 # openai>=1.0
+
+# Development — run the offline test suite with `pytest`
+pytest>=7.0
