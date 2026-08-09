@@ -9,6 +9,24 @@ console, an autonomous agent, and a set of tools any AI client can call.
 No notebooks, no setup. Upload a CSV and you get a trained model, an interactive
 dashboard, a written analysis, and the ability to score new data.
 
+## Screenshots
+
+The web console walks the whole workflow, from an uploaded CSV to a trained model.
+
+![Landing page](assets/landing.png)
+
+The interactive dashboard, with Overview, Data analysis, Model, and Insights tabs.
+
+![Interactive dashboard](assets/dashboard.png)
+
+The cross-validated model leaderboard, every candidate ranked on your data.
+
+![Model leaderboard](assets/leaderboard.png)
+
+The self-writing analysis report, the signature output.
+
+![Analysis report](assets/report.png)
+
 ---
 
 ## What it does
