@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+outputs/eda/
+outputs/eval/
+outputs/uploads/
+.DS_Store
+.env
+
+# personal, kept out of the public repo
+INTERVIEW_GUIDE.md
