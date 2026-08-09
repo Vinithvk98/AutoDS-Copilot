@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "autods": {
+      "command": "python3",
+      "args": ["/Users/prakruthiprakash/Desktop/VINI_1/AutoDS_Copilot/mcp_launch.py"]
+    }
+  }
+}
