@@ -9,3 +9,7 @@ outputs/
 
 # personal, kept out of the public repo
 INTERVIEW_GUIDE.md
+
+# local preview snapshots, never commit
+*_preview.html
+*.preview.html
