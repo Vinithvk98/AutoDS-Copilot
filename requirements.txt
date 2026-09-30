@@ -20,8 +20,16 @@ mcp>=1.0
 xgboost>=2.0
 lightgbm>=4.0
 
-# Optional — richer LLM-written insights when OPENAI_API_KEY is set
-# openai>=1.0
+# Optional — SMOTE for class imbalance. Without it, a dependency-free random
+# oversampler is used instead, so imbalance handling always works.
+imbalanced-learn>=0.12
+
+# Optional — grounded, LLM-written copilot prose. Configure ONE provider via
+# environment variables (see .env.example). Without any of these the tool runs
+# fully offline on rule-based text.
+# openai>=1.0        # AUTODS_LLM_PROVIDER=openai     (needs OPENAI_API_KEY)
+# anthropic>=0.39    # AUTODS_LLM_PROVIDER=anthropic  (needs ANTHROPIC_API_KEY)
+# Ollama (local, offline) needs no Python package, just the Ollama app running.
 
 # Development — run the offline test suite with `pytest`
 pytest>=7.0

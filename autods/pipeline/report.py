@@ -42,6 +42,7 @@ def build_report(s: dict) -> dict:
     prof = s.get("profile", {})
     task = s.get("task", {})
     metrics = s.get("evaluation", {}).get("metrics", {})
+    data = s.get("evaluation", {}).get("data", {})
     fi = s.get("evaluation", {}).get("feature_importance", [])
     pre = s.get("pre_insights", [])
     post = s.get("post_insights", [])
@@ -133,19 +134,80 @@ def build_report(s: dict) -> dict:
     sections.append({"heading": "How we chose a model", "paras": model_paras,
                      "board": board})
 
-    # --- 5. How well it does --------------------------------------------
-    perf_paras = [_performance_sentence(ttype, model, metrics)]
-    if fi:
-        top = [_clean_feat(d["feature"]) for d in fi[:3]]
-        if len(top) >= 2:
-            perf_paras.append(
-                f"When it makes a call, it leans most on {top[0]}, "
-                f"{top[1]}" + (f", and {top[2]}" if len(top) > 2 else "") +
-                ". Those are the levers worth paying attention to.")
-    sections.append({"heading": "How well it does", "paras": perf_paras,
-                     "metrics": metrics, "features": fi[:8]})
+    # --- 5. How the classes were balanced (only if they were) -----------
+    balance = data.get("balance")
+    if balance and balance != "none":
+        sections.append({"heading": "How the classes were balanced", "paras": [
+            (f"Because {_clean_feat(target) if target else 'the outcome'} is lopsided, "
+             f"AutoDS evened out the training data so the model would learn the rare "
+             f"case instead of ignoring it. It used {balance} on the training split "
+             "only. The test set kept its real ratio, so nothing leaked and the scores "
+             "below stay honest.")]})
 
-    # --- 6. What it means -----------------------------------------------
+    # --- 6. How well it does --------------------------------------------
+    sections.append({"heading": "How well it does",
+                     "paras": [_performance_sentence(ttype, model, metrics)],
+                     "metrics": metrics})
+
+    # --- 7. What the model relies on ------------------------------------
+    perm = data.get("permutation")
+    if perm:
+        names = [p["feature"].replace("_", " ") for p in perm[:3]]
+        lean = names[0] + (f", {names[1]}" if len(names) > 1 else "") + \
+            (f", and {names[2]}" if len(names) > 2 else "")
+        sections.append({"heading": "What the model relies on", "paras": [
+            ("To see what the model actually uses, AutoDS shuffles each column on the "
+             "held out data and watches the score fall. The larger the fall, the more "
+             "the model depends on that column. This works for any model, and it points "
+             "at real columns rather than encoded codes."),
+            f"It leans most on {lean}. Those are the levers worth paying attention to."],
+            "permutation": perm})
+    elif fi:
+        top = [_clean_feat(d["feature"]) for d in fi[:3]]
+        lean = (top[0] + (f", {top[1]}" if len(top) > 1 else "")
+                + (f", and {top[2]}" if len(top) > 2 else "")) if top else ""
+        sections.append({"heading": "What the model relies on",
+                         "paras": ([f"When it makes a call, it leans most on {lean}."] if lean else []),
+                         "features": fi[:8]})
+
+    # --- 8. How reliable and fair it is ---------------------------------
+    thr, cal, fair = data.get("threshold"), data.get("calibration"), data.get("fairness")
+    rel_paras, stats = [], None
+    if thr and thr["tuned"]["threshold"] != 0.5:
+        d0, dt = thr["default"], thr["tuned"]
+        rel_paras.append(
+            "The usual half way cutoff is not always the best choice on lopsided data. "
+            f"Moving the decision threshold to {dt['threshold']} lifts the balanced score "
+            f"from {d0['f1']} to {dt['f1']} and recall from {d0['recall']} to "
+            f"{dt['recall']}, so more of the rare cases are caught.")
+        stats = {"cols": ["setting", "precision", "recall", "f1"],
+                 "rows": [["default 0.5", d0["precision"], d0["recall"], d0["f1"]],
+                          [f"tuned {dt['threshold']}", dt["precision"], dt["recall"], dt["f1"]]]}
+    if cal:
+        rel_paras.append(
+            f"The predicted probabilities score {cal['brier']} on the Brier measure, "
+            "which checks whether a stated chance really plays out that often. Lower is better.")
+    if fair and fair[0]["selection_gap"] > 0:
+        g = fair[0]["groups"]
+        rel_paras.append(
+            "The model is not equally sure across every group. Its selection rate varies "
+            f"across {fair[0]['feature']} by {fair[0]['selection_gap']}, highest for "
+            f"{g[0]['value']} and lowest for {g[-1]['value']}. That is a flag to look "
+            "into, not a verdict.")
+    if rel_paras:
+        sections.append({"heading": "How reliable and fair it is", "paras": rel_paras,
+                         "stats": stats, "fairness": fair})
+
+    # --- 9. Where it makes mistakes -------------------------------------
+    errs = data.get("errors")
+    if errs and errs.get("by_group"):
+        sections.append({"heading": "Where it makes mistakes", "paras": [
+            (f"No model is right everywhere. On the held out data it was wrong "
+             f"{errs['n_errors']} times out of {errs['n_test']}, an error rate of "
+             f"{errs['error_rate']}. The mistakes are not spread evenly, so it is worth "
+             "knowing where to be careful.")], "errors": errs})
+
+    # --- 10. What it means ----------------------------------------------
     conclusion = [_conclusion_sentence(ttype, metrics, target)]
     conclusion.append(
         "From here it is worth trying the other strong models on the leaderboard, "

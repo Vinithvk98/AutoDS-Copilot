@@ -8,6 +8,8 @@ import pandas as pd
 from pathlib import Path
 from sklearn import metrics
 from .. import config
+from . import rigor
+from . import explain
 
 
 def _save(fig, name: str, outdir: Path) -> str:
@@ -45,6 +47,9 @@ def evaluate(trained: dict, outdir: Path | None = None) -> dict:
     # text is scored like classification; timeseries like regression
     task = {"text": "classification", "timeseries": "regression"}.get(raw_task, raw_task)
     result = {"metrics": {}, "plots": [], "feature_importance": [], "data": {}}
+    # record how class imbalance was handled, so insights and the UI can report it
+    if trained.get("balance"):
+        result["data"]["balance"] = trained["balance"]
 
     if task == "clustering":
         X, labels = trained["X"], trained["labels"]
@@ -118,6 +123,27 @@ def evaluate(trained: dict, outdir: Path | None = None) -> dict:
                 if isinstance(v, dict) and k not in ("accuracy", "macro avg", "weighted avg")]
         except Exception:
             pass
+        # ---- modelling-rigor diagnostics ----
+        try:
+            if len(np.unique(y_test)) == 2 and hasattr(pipe, "predict_proba"):
+                pos = rigor.positive_label(list(getattr(pipe, "classes_", np.unique(y_test))))
+                ci = list(pipe.classes_).index(pos)
+                proba = pipe.predict_proba(X_test)[:, ci]
+                result["data"]["threshold"] = rigor.tune_threshold(y_test, proba, pos)
+                result["data"]["calibration"] = rigor.calibration(y_test, proba, pos)
+                result["metrics"]["brier"] = result["data"]["calibration"]["brier"]
+                result["metrics"]["best_threshold"] = result["data"]["threshold"]["tuned"]["threshold"]
+        except Exception:
+            pass
+        # fairness across low-cardinality categorical features
+        try:
+            if isinstance(X_test, pd.DataFrame):
+                pos = rigor.positive_label(list(getattr(pipe, "classes_", np.unique(y_test))))
+                fair = rigor.fairness(X_test, y_test, y_pred, pos)
+                if fair:
+                    result["data"]["fairness"] = fair
+        except Exception:
+            pass
         # ROC and precision-recall curves for binary problems
         try:
             if len(np.unique(y_test)) == 2 and hasattr(pipe, "predict_proba"):
@@ -165,4 +191,17 @@ def evaluate(trained: dict, outdir: Path | None = None) -> dict:
             result["plots"].append(_save(fig, "actual_vs_pred.png", outdir))
 
     result["feature_importance"] = feature_importance(trained)
+    # model-agnostic explainability + error analysis (trust tools)
+    try:
+        perm = explain.permutation_importance(trained)
+        if perm:
+            result["data"]["permutation"] = perm
+    except Exception:
+        pass
+    try:
+        errs = explain.error_analysis(trained)
+        if errs:
+            result["data"]["errors"] = errs
+    except Exception:
+        pass
     return result

@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from .. import config
 from .loader import column_types
 from .model_select import build_estimator, NO_K_CLUSTERERS
+from . import rigor
 
 
 def build_preprocessor(df: pd.DataFrame, feature_cols: list[str]) -> ColumnTransformer:
@@ -77,16 +78,89 @@ def timeseries_fit(d: pd.DataFrame, feat_cols: list[str], target: str,
     return pipe, y_true, y_pred
 
 
+def balance_preview(df: pd.DataFrame, target: str, strategy: str) -> dict:
+    """Show the effect of the imbalance strategy without training a model.
+
+    Splits exactly as training does, then reports the class counts of the training
+    split before and after resampling, plus the untouched test split. This is the
+    proof that balancing happened on train only and the test set keeps its real
+    ratio. Returns {strategy, before, after, test, changed}.
+    """
+    def counts(s):
+        vc = pd.Series(list(s)).value_counts()
+        return {str(k): int(v) for k, v in vc.items()}
+
+    d = df.dropna(subset=[target]).reset_index(drop=True)
+    feature_cols = [c for c in d.columns if c != target]
+    X, y = d[feature_cols], d[target]
+    stratify = y if y.nunique() > 1 else None
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=config.TEST_SIZE, random_state=config.RANDOM_STATE, stratify=stratify)
+
+    before, test = counts(y_train), counts(y_test)
+    after, used = dict(before), strategy
+    try:
+        if strategy == "smote" and rigor.smote_available():
+            from imblearn.over_sampling import SMOTE
+            Xt = build_preprocessor(d, feature_cols).fit_transform(X_train)
+            minority = int(pd.Series(list(y_train)).value_counts().min())
+            k = max(1, min(5, minority - 1))
+            _, y_res = SMOTE(random_state=config.RANDOM_STATE, k_neighbors=k).fit_resample(Xt, y_train)
+            after, used = counts(y_res), "smote"
+        elif strategy == "oversample" or (strategy == "smote" and not rigor.smote_available()):
+            _, y_res = rigor.oversample(X_train, y_train)
+            after, used = counts(y_res), "oversample"
+        # none / class_weight leave the rows unchanged (after == before)
+    except Exception:
+        _, y_res = rigor.oversample(X_train, y_train)
+        after, used = counts(y_res), "oversample"
+
+    return {"strategy": used, "before": before, "after": after, "test": test,
+            "changed": after != before}
+
+
+def _fit_supervised(df, feature_cols, X_train, y_train, est, task_type, strategy):
+    """Fit a classification/regression pipeline, applying the resampling strategy
+    on the training split only. Returns (pipeline, strategy_actually_used)."""
+    pre = build_preprocessor(df, feature_cols)
+    if task_type == "classification" and strategy == "smote":
+        if rigor.smote_available():
+            try:
+                from imblearn.pipeline import Pipeline as ImbPipeline
+                from imblearn.over_sampling import SMOTE
+                minority = int(pd.Series(list(y_train)).value_counts().min())
+                k = max(1, min(5, minority - 1))
+                pipe = ImbPipeline([("pre", pre),
+                                    ("smote", SMOTE(random_state=config.RANDOM_STATE, k_neighbors=k)),
+                                    ("model", est)])
+                pipe.fit(X_train, y_train)
+                return pipe, "smote"
+            except Exception:
+                pass
+        strategy = "oversample"  # imblearn missing or SMOTE failed
+    if task_type == "classification" and strategy == "oversample":
+        X_res, y_res = rigor.oversample(X_train, y_train)
+        pipe = Pipeline([("pre", pre), ("model", est)])
+        pipe.fit(X_res, y_res)
+        return pipe, "oversample"
+    # none, class_weight (already set on est), or regression
+    pipe = Pipeline([("pre", pre), ("model", est)])
+    pipe.fit(X_train, y_train)
+    return pipe, strategy
+
+
 def train_model(df: pd.DataFrame, task_type: str, model_name: str,
                 target: str | None = None, time_col: str | None = None,
                 text_col: str | None = None, balanced: bool = False,
                 n_clusters: int = 3, params: dict | None = None,
-                estimator=None) -> dict:
+                estimator=None, balance: str | None = None) -> dict:
     """Train and return everything the evaluation stage needs.
 
     `params` optionally overrides the model's hyperparameters (used after tuning).
     `estimator` optionally supplies a fully-built estimator (used for ensembles),
     bypassing the registry lookup, balancing, and params.
+    `balance` picks the imbalance strategy for classification: none | class_weight |
+    oversample | smote. Left None, it falls back to class_weight when `balanced`.
     """
     def _apply_params(est):
         if params:
@@ -136,15 +210,20 @@ def train_model(df: pd.DataFrame, task_type: str, model_name: str,
     stratify = y if task_type == "classification" and y.nunique() > 1 else None
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=config.TEST_SIZE, random_state=config.RANDOM_STATE, stratify=stratify)
+    strategy = "none"
     if estimator is not None:
         est = estimator
+        pipe = Pipeline([("pre", build_preprocessor(df, feature_cols)), ("model", est)])
+        pipe.fit(X_train, y_train)
     else:
         est = build_estimator(task_type, model_name)
         if task_type == "classification":
-            est = _apply_balance(est, balanced)
+            strategy = rigor.resolve_balance(balanced, balance)
+            if strategy == "class_weight":
+                est = _apply_balance(est, True)
         est = _apply_params(est)
-    pipe = Pipeline([("pre", build_preprocessor(df, feature_cols)), ("model", est)])
-    pipe.fit(X_train, y_train)
+        pipe, strategy = _fit_supervised(df, feature_cols, X_train, y_train,
+                                         est, task_type, strategy)
     return {"task_type": task_type, "model_name": model_name, "pipeline": pipe,
             "X_train": X_train, "X_test": X_test, "y_train": y_train, "y_test": y_test,
-            "feature_cols": feature_cols, "target": target}
+            "feature_cols": feature_cols, "target": target, "balance": strategy}

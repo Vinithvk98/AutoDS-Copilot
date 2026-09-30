@@ -15,10 +15,9 @@ The default is pre-selected. Pick another or compare them all.</p>
 </div>
 {% endif %}
 {% if why %}
-<div class="rationale"><span class="rationale-why">Why</span> {{ why.text }}
-  <span class="rationale-src">Source, {{ why.source }}</span></div>
+<div class="rationale" data-enhance="why-models" data-sid="{{ sid }}">{% include 'partials/_rationale_inner.html' %}</div>
 {% endif %}
-<form data-form data-submit="train" data-sid="{{ sid }}">
+<form data-form data-submit="{{ 'balance' if task.task_type in ['classification', 'text'] else 'train' }}" data-sid="{{ sid }}">
   {% for grp in grouped %}
   <div class="mgroup">
     <div class="mgroup-h">{{ grp.family }} <span>{{ grp.models|length }}</span></div>

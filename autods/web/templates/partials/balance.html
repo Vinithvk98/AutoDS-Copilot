@@ -1,0 +1,43 @@
+<h1>Balancing the classes</h1>
+{% if rep.changed %}
+<p class="lede">One class has far more rows than the other, so the model would just learn
+to predict the common class. We fix this by evening out the training data before it trains.
+This happens on the training split only. The test set keeps its real ratio, so the score
+stays honest.</p>
+
+<div class="card">
+  <div class="balance-head">
+    <span class="pill">{{ rep.strategy }}</span> applied to the training split only
+  </div>
+  {% if chart %}<img src="{{ chart }}" alt="class counts before and after balancing" class="balance-chart">{% endif %}
+  <p class="chart-read"><b>How to read this.</b> The left panel is the training data as it
+  came in, one class is much shorter than the other. The right panel is after {{ rep.strategy }},
+  where both classes have the same number of rows, so the model sees each class equally.</p>
+  <table class="kv balance-table">
+    <tr><th>class</th><th>before</th><th>after</th></tr>
+    {% for c in rep.before.keys() %}
+    <tr><td>{{ c }}</td><td>{{ rep.before[c] }}</td><td><b>{{ rep.after[c] }}</b></td></tr>
+    {% endfor %}
+  </table>
+  <p class="muted">Test set left untouched at its real ratio
+    ({% for c, v in rep.test.items() %}{{ c }} {{ v }}{% if not loop.last %}, {% endif %}{% endfor %}),
+    so no test information leaks into training.</p>
+</div>
+{% else %}
+<p class="lede">The classes are already balanced, so no resampling is needed. The model
+trains on the data as is.</p>
+<div class="card">
+  <table class="kv balance-table">
+    <tr><th>class</th><th>training rows</th></tr>
+    {% for c, v in rep.before.items() %}<tr><td>{{ c }}</td><td>{{ v }}</td></tr>{% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<form data-form data-submit="train" data-sid="{{ sid }}">
+  <input type="hidden" name="model" value="{{ model_name }}">
+  <div class="actions">
+    <button class="btn primary" type="submit">Train {{ model_name }}</button>
+    <button class="btn" type="button" data-go="models" data-sid="{{ sid }}">Back to models</button>
+  </div>
+</form>

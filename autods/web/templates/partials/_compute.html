@@ -1,0 +1,19 @@
+{% if meta %}
+<div class="card compute">
+  <span class="compute-tag">Analyzed your data</span>
+  <code class="compute-call">{{ meta.tool }}{% if meta.args %}({{ meta.args }}){% endif %}</code>
+  {% if meta.result and not meta.result.error %}
+  <div class="compute-summary">{{ meta.result.summary }}</div>
+  {% if meta.result.data is mapping %}
+  <table class="compute-table">
+    {% for k, v in meta.result.data.items() %}
+    {% if v is mapping %}{% for kk, vv in v.items() %}<tr><td>{{ kk }}</td><td>{{ vv }}</td></tr>{% endfor %}
+    {% else %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endif %}
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% elif meta.result and meta.result.error %}
+  <div class="compute-summary muted">{{ meta.result.error }}</div>
+  {% endif %}
+</div>
+{% endif %}

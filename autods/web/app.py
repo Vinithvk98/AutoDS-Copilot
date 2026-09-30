@@ -7,15 +7,19 @@ The pipeline package does the ML work; this app is the "Recommend + you approve"
 interface. Run with:  python run.py   (or  flask --app autods.web.app run)
 """
 from __future__ import annotations
+import json
 import uuid
 from pathlib import Path
 from flask import (Flask, render_template, request, redirect, url_for,
-                   send_from_directory, abort, jsonify)
+                   send_from_directory, abort, jsonify, Response, stream_with_context)
 
 from .. import config
 from ..pipeline import (loader, preclean, task_detect, eda, preprocess, model_select,
                         train, evaluate, insights, leaderboard, report, quality)
 from .. import rag
+from .. import llm
+from .. import converse
+from .. import planner
 
 app = Flask(__name__)
 app.config["UPLOAD_DIR"] = config.OUTPUT_DIR / "uploads"
@@ -117,7 +121,7 @@ def explore(sid):
     s["profile"] = loader.profile(df)
     s["task"] = task_detect.detect_task(df, target=s.get("target"))
     s["eda"] = eda.generate_eda(df, target=s["task"]["target"])
-    s["pre_insights"] = insights.pre_insights(df, s["profile"], s["task"])
+    s["pre_insights"] = insights.pre_insights(df, s["profile"], s["task"], use_llm=False)
     charts = [{**c, "url": url_for("outputs", relpath=_rel(c["path"]))} for c in s["eda"]]
     return render_template("explore.html", sid=sid, profile=s["profile"], task=s["task"],
                            charts=charts, pre_insights=s["pre_insights"],
@@ -171,15 +175,16 @@ def train_route(sid):
     t = s["task"]
     trained = train.train_model(s["df_clean"], t["task_type"], model_name,
                                 target=t["target"], time_col=t.get("time_col"),
-                                text_col=t.get("text_col"), balanced=t.get("imbalanced", False))
+                                text_col=t.get("text_col"), balance=("smote" if t.get("imbalanced") else None))
     ev = evaluate.evaluate(trained)
     post = insights.post_insights(t["task_type"], model_name, ev,
-                                  dataset=Path(s["path"]).name)
+                                  dataset=Path(s["path"]).name, use_llm=False)
     plots = [url_for("outputs", relpath=_rel(p)) for p in ev["plots"]]
     # export the fitted model so the user can download it
     s["trained"] = trained
     s["model_name"] = model_name
     s["evaluation"] = ev
+    s.get("_enh", {}).pop("post", None)  # stale after re-eval
     s["post_insights"] = post
     rag.record_run(Path(s["path"]).name, s["task"], model_name, ev["metrics"],
                    profile=s.get("profile"))
@@ -309,7 +314,7 @@ def api_explore(sid):
     s["profile"] = loader.profile(df)
     s["task"] = task_detect.detect_task(df, target=s.get("target"))
     s["eda"] = eda.generate_eda(df, target=s["task"]["target"])
-    s["pre_insights"] = insights.pre_insights(df, s["profile"], s["task"])
+    s["pre_insights"] = insights.pre_insights(df, s["profile"], s["task"], use_llm=False)
     s["checks"] = quality.run_checks(df, s["task"])
     charts = [{**c, "url": url_for("outputs", relpath=_rel(c["path"]))} for c in s["eda"]]
     html = render_template("partials/explore.html", sid=sid, profile=s["profile"],
@@ -332,7 +337,8 @@ def api_clean(sid):
     q = "handling missing values and messy columns"
     if any("leak" in n.lower() for n in s["plan"].get("notes", [])):
         q = "data leakage dropping columns"
-    why = rag.rationale(q)
+    s["_whyq_clean"] = q
+    why = rag.rationale(q, use_llm=False)
     html = render_template("partials/clean.html", sid=sid, plan=s["plan"], why=why)
     n = len(s["plan"].get("impute", {}))
     log = [f"[Cleaning agent] proposed plan · {n} column(s) to impute"]
@@ -358,8 +364,10 @@ def api_models(sid):
     # experience retrieval + a grounded reason for the recommendation
     fp = rag.fingerprint(s.get("profile", {}), s["task"])
     sims = rag.similar_runs(fp)
-    why = rag.rationale(f"choosing a model for {s['task']['task_type']} tabular data"
-                        + (" with imbalanced classes" if s["task"].get("imbalanced") else ""))
+    why_q = ("choosing a model for " + s["task"]["task_type"] + " tabular data"
+             + (" with imbalanced classes" if s["task"].get("imbalanced") else ""))
+    s["_whyq_models"] = why_q
+    why = rag.rationale(why_q, use_llm=False)
     html = render_template("partials/models.html", sid=sid, grouped=grouped, task=s["task"],
                            sims=sims, why=why)
     return _api("models", html, log, {"active": 4})
@@ -386,6 +394,112 @@ def api_leaderboard(sid):
     return _api("leaderboard", html, log, rail)
 
 
+def _run_facts(s: dict) -> list[str]:
+    """Assemble verified facts about a finished run for the grounded summary."""
+    t = s.get("task", {})
+    ev = s.get("evaluation", {})
+    m = ev.get("metrics", {})
+    data = ev.get("data", {})
+    facts = [f"Dataset {Path(s.get('path', 'data')).name}, a {t.get('task_type')} task "
+             f"on target {t.get('target')}.", f"Model {s.get('model_name')}."]
+    if m:
+        facts.append("Held-out metrics " + ", ".join(f"{k} {v}" for k, v in m.items()) + ".")
+    if data.get("balance") and data["balance"] != "none":
+        facts.append(f"Class imbalance handled with {data['balance']} on the training split only.")
+    thr = data.get("threshold")
+    if thr and thr["tuned"]["threshold"] != 0.5:
+        facts.append(f"Tuning the threshold to {thr['tuned']['threshold']} gives F1 "
+                     f"{thr['tuned']['f1']} versus {thr['default']['f1']} at 0.5.")
+    perm = data.get("permutation")
+    if perm:
+        facts.append("Top drivers by permutation importance "
+                     + ", ".join(p["feature"] for p in perm[:4]) + ".")
+    fair = data.get("fairness")
+    if fair and fair[0]["selection_gap"] > 0:
+        facts.append(f"Selection rate gap across {fair[0]['feature']} is {fair[0]['selection_gap']}.")
+    errs = data.get("errors")
+    if errs and "error_rate" in errs:
+        facts.append(f"Overall error rate {errs['error_rate']}.")
+    return facts
+
+
+def _balance_chart(rep: dict, sid: str) -> str:
+    """Two side-by-side panels: the imbalanced training split on the left, the
+    balanced one on the right, so the fix reads at a glance."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    classes = [str(c) for c in rep["before"].keys()]
+    before = [rep["before"].get(c, 0) for c in rep["before"].keys()]
+    after = [rep["after"].get(c, 0) for c in rep["before"].keys()]
+    ymax = max(max(before), max(after)) * 1.20
+
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(7.4, 3.8), sharey=True)
+    for ax, vals, title, color in [
+            (axl, before, "Before  ·  imbalanced", "#c0562c"),
+            (axr, after, "After  ·  balanced", "#1f7a54")]:
+        bars = ax.bar(classes, vals, color=color, width=0.6)
+        for b, v in zip(bars, vals):
+            ax.text(b.get_x() + b.get_width() / 2, v, str(v),
+                    ha="center", va="bottom", fontsize=9)
+        ax.set_title(title, fontsize=11)
+        ax.set_xlabel("class")
+        ax.set_ylim(0, ymax)
+        ax.spines[["top", "right"]].set_visible(False)
+    axl.set_ylabel("training rows")
+    fig.tight_layout()
+
+    outdir = config.OUTPUT_DIR / "eval"; outdir.mkdir(parents=True, exist_ok=True)
+    p = outdir / f"balance_{sid}.png"
+    fig.savefig(p, bbox_inches="tight", dpi=110); plt.close(fig)
+    return url_for("outputs", relpath=_rel(str(p)))
+
+
+@app.route("/api/autopilot/<sid>", methods=["GET"])
+def api_autopilot(sid):
+    """The agent proposes a full plan (cleaning + model, with reasons) for the
+    user to approve. Choices are grounded and validated; nothing runs yet."""
+    s = SESSIONS.get(sid) or abort(404)
+    t = s["task"]
+    s["plan"] = preprocess.recommend_plan(s["df"], t["target"], task=t)
+    candidates = model_select.recommend_models(t["task_type"])
+    s["candidates"] = candidates
+    # analyse: cross-validate the candidates on the (recommended-clean) data so the
+    # agent chooses the best model for THIS dataset, not a generic default
+    df_clean = preprocess.apply_plan(s["df"], s["plan"])
+    board = leaderboard.run_leaderboard(df_clean, t["task_type"], t["target"],
+                                        time_col=t.get("time_col"), text_col=t.get("text_col"))
+    s["board"] = board
+    plan = planner.propose(s["df"], s.get("profile", {}), t, s["plan"], candidates, board=board)
+    s["autoplan"] = plan
+    top = [r for r in board.get("rows", []) if r.get("score") is not None][:3]
+    html = render_template("partials/autopilot.html", sid=sid, plan=plan, task=t,
+                           board=board, top=top)
+    log = [f"[Agent] cross-validated {len(board.get('rows', []))} models on {board.get('metric')}",
+           f"[Agent] best for this data is {plan['model']}"
+           + (f" ({plan['metric']} {plan['score']})" if plan.get("score") is not None else "")]
+    return _api("autopilot", html, log, {"active": 4})
+
+
+@app.route("/api/balance/<sid>", methods=["POST"])
+def api_balance(sid):
+    """Proof step: show class balance before and after resampling on the training
+    split, then let the user proceed to train the model they picked."""
+    s = SESSIONS.get(sid) or abort(404)
+    t = s["task"]
+    model_name = request.form.get("model") or next(
+        (c["name"] for c in s["candidates"] if c.get("recommended")), s["candidates"][0]["name"])
+    s["_pending_model"] = model_name
+    strategy = "smote" if t.get("imbalanced") else "none"
+    rep = train.balance_preview(s["df_clean"], t["target"], strategy)
+    chart = _balance_chart(rep, sid) if rep["changed"] else None
+    html = render_template("partials/balance.html", sid=sid, rep=rep,
+                           model_name=model_name, chart=chart, task=t)
+    log = ([f"[Balance] {rep['strategy']} on the training split, classes evened out"]
+           if rep["changed"] else ["[Balance] classes already balanced, no resampling needed"])
+    return _api("balance", html, log, {"active": 4})
+
+
 @app.route("/api/train/<sid>", methods=["POST"])
 def api_train(sid):
     s = SESSIONS.get(sid) or abort(404)
@@ -395,15 +509,16 @@ def api_train(sid):
     try:
         trained = train.train_model(s["df_clean"], t["task_type"], model_name, target=t["target"],
                                     time_col=t.get("time_col"), text_col=t.get("text_col"),
-                                    balanced=t.get("imbalanced", False))
+                                    balance=("smote" if t.get("imbalanced") else None))
         ev = evaluate.evaluate(trained)
     except Exception as e:
         return jsonify({"error": f"{model_name} could not train on this data ({e})"}), 400
-    post = insights.post_insights(t["task_type"], model_name, ev, dataset=Path(s["path"]).name)
+    post = insights.post_insights(t["task_type"], model_name, ev, dataset=Path(s["path"]).name, use_llm=False)
     plots = [url_for("outputs", relpath=_rel(p)) for p in ev["plots"]]
     s["trained"] = trained
     s["model_name"] = model_name
     s["evaluation"] = ev
+    s.get("_enh", {}).pop("post", None)  # stale after re-eval
     s["post_insights"] = post
     rag.record_run(Path(s["path"]).name, s["task"], model_name, ev["metrics"],
                    profile=s.get("profile"))
@@ -418,7 +533,7 @@ def api_train(sid):
     html = render_template("partials/results.html", sid=sid, model_name=model_name, task=t,
                            metrics=ev["metrics"], plots=plots, can_tune=can_tune,
                            feature_importance=ev["feature_importance"], post_insights=post,
-                           snippet=snippet, cv=cv)
+                           snippet=snippet, cv=cv, data=ev.get("data", {}))
     # headline metric for the rail
     order = ["accuracy", "r2", "f1", "silhouette"]
     key = next((k for k in order if k in ev["metrics"]), next(iter(ev["metrics"]), None))
@@ -518,11 +633,12 @@ def api_ensemble(sid):
         ev = evaluate.evaluate(trained)
     except Exception as e:
         return jsonify({"error": f"Could not build the ensemble ({e})"}), 400
-    post = insights.post_insights(t["task_type"], model_name, ev, dataset=Path(s["path"]).name)
+    post = insights.post_insights(t["task_type"], model_name, ev, dataset=Path(s["path"]).name, use_llm=False)
     plots = [url_for("outputs", relpath=_rel(p)) for p in ev["plots"]]
     s["trained"] = trained
     s["model_name"] = model_name
     s["evaluation"] = ev
+    s.get("_enh", {}).pop("post", None)  # stale after re-eval
     s["post_insights"] = post
     s["cv"] = None
     rag.record_run(Path(s["path"]).name, t, model_name, ev["metrics"], profile=s.get("profile"))
@@ -530,7 +646,7 @@ def api_ensemble(sid):
     html = render_template("partials/results.html", sid=sid, model_name=model_name, task=t,
                            metrics=ev["metrics"], plots=plots, can_tune=False,
                            feature_importance=ev["feature_importance"], post_insights=post,
-                           snippet=snippet, cv=None)
+                           snippet=snippet, cv=None, data=ev.get("data", {}))
     log = [f"[Ensemble] combined {n} models into a {kind} ensemble",
            f"[Evaluator] {', '.join(f'{k}={v}' for k, v in list(ev['metrics'].items())[:3])}"]
     order = ["accuracy", "r2", "f1", "silhouette"]
@@ -567,15 +683,16 @@ def api_tune(sid):
         # actually apply the winning settings, retrain, and evaluate fairly
         try:
             tuned = train.train_model(s["df_clean"], t["task_type"], model_name,
-                                      target=t["target"], balanced=t.get("imbalanced", False),
+                                      target=t["target"], balance=("smote" if t.get("imbalanced") else None),
                                       params=result["best_params"])
             ev = evaluate.evaluate(tuned)
             after = ev["metrics"]
             # make the tuned model the active one for download / predict / report
             s["trained"] = tuned
             s["evaluation"] = ev
+            s.get("_enh", {}).pop("post", None)  # stale after re-eval
             s["post_insights"] = insights.post_insights(t["task_type"], model_name, ev,
-                                                        dataset=Path(s["path"]).name)
+                                                        dataset=Path(s["path"]).name, use_llm=False)
             log.append("[Tuner] retrained with the best settings and kept the improved model")
         except Exception as e:
             log.append(f"[Tuner] could not retrain ({e})")
@@ -639,6 +756,108 @@ def api_ask(sid):
     return _api("ask", html, log, {"active": 5})
 
 
+@app.route("/api/enhance/<sid>/<key>")
+def api_enhance(sid, key):
+    """Background upgrade of a step's insights or rationale to grounded LLM prose.
+
+    Pages render instantly with rule-based text; the console then calls this to
+    swap in the AI version without blocking. Results are cached per run so
+    re-visiting a step is instant, and it no-ops when no model is configured."""
+    s = SESSIONS.get(sid) or abort(404)
+    if not llm.available():
+        return jsonify({"html": None})
+    cache = s.setdefault("_enh", {})
+    if key in cache:
+        return jsonify({"html": cache[key]})
+
+    html = None
+    try:
+        if key == "pre" and "profile" in s:
+            items = insights.pre_insights(s["df"], s["profile"], s["task"], use_llm=True)
+            s["pre_insights"] = items
+            html = render_template("partials/_insights_items.html", items=items)
+        elif key == "post" and "evaluation" in s:
+            t = s["task"]
+            items = insights.post_insights(t["task_type"], s.get("model_name"), s["evaluation"],
+                                           dataset=Path(s["path"]).name, use_llm=True)
+            s["post_insights"] = items
+            html = render_template("partials/_insights_items.html", items=items)
+        elif key in ("why-clean", "why-models"):
+            q = s.get("_whyq_clean" if key == "why-clean" else "_whyq_models")
+            why = rag.rationale(q, use_llm=True) if q else None
+            if why:
+                html = render_template("partials/_rationale_inner.html", why=why)
+        elif key == "summary" and "evaluation" in s:
+            from ..rag import generate as _gen
+            text = _gen.executive_summary(_run_facts(s))
+            if text:
+                html = render_template("partials/_summary.html", text=text)
+        elif key == "compare" and s.get("board"):
+            from ..rag import generate as _gen
+            board = s["board"]
+            text = _gen.compare_models(board.get("rows", []), board.get("metric", ""))
+            if text:
+                html = render_template("partials/_compare.html", text=text)
+    except Exception:
+        html = None
+
+    if html:
+        cache[key] = html
+    return jsonify({"html": html})
+
+
+def _sse(event: str, data) -> str:
+    """Format one Server-Sent Event. Data is JSON-encoded so newlines in the
+    streamed text never break the SSE framing."""
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+@app.route("/api/ask_stream/<sid>", methods=["POST"])
+def api_ask_stream(sid):
+    """Stream a grounded answer token by token over Server-Sent Events. Retrieval
+    happens once up front, then the answer streams; if no model is available it
+    falls back to the non-streaming answer so the panel always responds."""
+    s = SESSIONS.get(sid) or abort(404)
+    question = (request.form.get("question") or "").strip()
+    if not question:
+        abort(400)
+    passages, sources = rag.retrieve_for_answer(question, session=s)
+    # data-aware: try to compute a real answer from the loaded dataset
+    df = s.get("df_clean")
+    if df is None:
+        df = s.get("df")
+    facts, meta = converse.analyze(question, df, history=s.get("chat")) if df is not None else (None, None)
+    sources_html = render_template("partials/_sources.html", passages=passages)
+    compute_html = render_template("partials/_compute.html", meta=meta) if meta else None
+
+    def gen():
+        # compute card (what was measured) leads; the answer then streams; the
+        # knowledge sources come last so they do not sit growing under the answer
+        if compute_html:
+            yield _sse("compute", compute_html)
+        collected = []
+        stream = (rag.answer_stream(question, passages, run_facts=facts)
+                  if (passages or facts) else None)
+        if stream is not None:
+            try:
+                for chunk in stream:
+                    if chunk:
+                        collected.append(chunk)
+                        yield _sse("token", chunk)
+            except Exception:
+                pass
+        if not collected:  # no model, or streaming failed: send the whole answer
+            ans = rag.answer(question, session=s)["answer"]
+            collected.append(ans)
+            yield _sse("token", ans)
+        yield _sse("sources", sources_html)
+        s.setdefault("chat", []).append({"q": question, "a": "".join(collected)})
+        yield _sse("done", "")
+
+    return Response(stream_with_context(gen()), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.route("/report/<sid>")
 def report_page(sid):
     s = SESSIONS.get(sid) or abort(404)
@@ -672,6 +891,8 @@ def _dashboard_data(s):
                  {"label": "F1 score", "value": m.get("f1")}]
         if "roc_auc" in m:
             kpis.append({"label": "ROC AUC", "value": m["roc_auc"]})
+        if "brier" in m:
+            kpis.append({"label": "Brier (calibration)", "value": m["brier"]})
     elif ttype in ("regression", "timeseries"):
         kpis += [{"label": "R squared", "value": m.get("r2")},
                  {"label": "RMSE", "value": m.get("rmse")}, {"label": "MAE", "value": m.get("mae")}]

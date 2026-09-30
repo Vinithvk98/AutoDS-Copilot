@@ -1,34 +1,16 @@
 <h1>Ask about your data</h1>
-<p class="lede">Ask a question about this dataset or about data science in general. The
-answer is built only from the knowledge base and this run, and the sources are shown
-so you can check them.</p>
+<p class="lede">Ask about this dataset or about data science in general. Questions about
+your data are answered from the real numbers, and every answer shows its sources.</p>
+
+<div id="chat" class="chat"></div>
 
 <form data-form data-submit="ask" data-sid="{{ sid }}">
-  <div class="card">
-    <label class="field"><span>Your question</span>
-      <input type="text" name="question" value="{{ question or '' }}"
-             placeholder="e.g. why is my model accurate but not useful"></label>
+  <div class="card askbar">
+    <input type="text" name="question" autocomplete="off"
+           placeholder="e.g. what is the churn rate by plan">
     <button class="btn primary" type="submit">Ask</button>
   </div>
 </form>
-
-{% if result %}
-<div class="card answer">
-  <h3>Answer</h3>
-  <p>{{ result.answer }}</p>
-</div>
-{% if result.passages %}
-<div class="card">
-  <h3>Sources</h3>
-  <ul class="sources">
-    {% for p in result.passages %}
-    <li><span class="src-tag {{ p.kind }}">{{ 'this run' if p.kind == 'run' else 'knowledge' }}</span>
-      <div><b>{{ p.title }}</b><span class="src-text">{{ p.text }}</span></div></li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
-{% endif %}
 
 <div class="actions">
   <button class="btn" type="button" data-go="report" data-sid="{{ sid }}">Back to the analysis</button>

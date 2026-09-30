@@ -1,0 +1,41 @@
+<h1>The copilot's plan</h1>
+<p class="lede">The agent looked at your data and proposed a full run. Review each
+decision and its reason, then approve to run it end to end, or adjust it yourself.</p>
+
+<div id="autoplan" data-plan='{{ plan|tojson }}'></div>
+
+<div class="plan">
+  <div class="plan-step">
+    <div class="plan-k">Predict</div>
+    <div class="plan-v"><code>{{ plan.target }}</code> <span class="pill">{{ plan.task_type }}</span></div>
+    <div class="plan-why">{{ plan.why.target }}</div>
+  </div>
+  <div class="plan-step">
+    <div class="plan-k">Clean</div>
+    <div class="plan-v">
+      {% if plan.drop_columns %}Drop {% for c in plan.drop_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}Keep all columns{% endif %}
+      {% if plan.drop_duplicates %} · remove duplicate rows{% endif %}
+    </div>
+    <div class="plan-why">{{ plan.why.cleaning }}</div>
+  </div>
+  <div class="plan-step">
+    <div class="plan-k">Model</div>
+    <div class="plan-v"><b>{{ plan.model }}</b>{% if plan.score is not none %} <span class="pill">{{ plan.metric }} {{ plan.score }}</span>{% endif %}</div>
+    <div class="plan-why">{{ plan.why.model }}</div>
+    {% if top %}
+    <table class="kv board plan-board">
+      <tr><th>Cross-validated</th><th>{{ board.metric }}</th></tr>
+      {% for r in top %}
+      <tr class="{% if r.name == plan.model %}bestrow{% endif %}">
+        <td>{{ r.name }}{% if r.name == plan.model %} <span class="pill">chosen</span>{% endif %}</td>
+        <td>{{ r.score }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn primary" type="button" data-go="autorun" data-sid="{{ sid }}">Approve and run</button>
+  <button class="btn" type="button" data-go="clean" data-sid="{{ sid }}">Adjust manually</button>
+</div>

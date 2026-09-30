@@ -41,7 +41,7 @@
 {% endif %}
 <div class="card">
   <h3>Pre-modelling insights</h3>
-  <ul class="insights">{% for b in pre_insights %}<li>{{ b }}</li>{% endfor %}</ul>
+  <ul class="insights" data-enhance="pre" data-sid="{{ sid }}">{% for b in pre_insights %}<li>{{ b }}</li>{% endfor %}</ul>
 </div>
 <h2>Charts <span class="muted">with the code behind them and a plain reading</span></h2>
 <div class="gallery">
@@ -50,4 +50,7 @@
     <figcaption><b>{{ c.title }}</b><code>{{ c.code }}</code><span class="insight">{{ c.insight }}</span></figcaption>
   </figure>{% endfor %}
 </div>
-<div class="actions"><button class="btn primary" data-go="clean" data-sid="{{ sid }}">Continue to cleaning</button></div>
+<div class="actions">
+  <button class="btn primary" data-go="clean" data-sid="{{ sid }}">Continue to cleaning</button>
+  {% if task.target %}<button class="btn" data-go="autopilot" data-sid="{{ sid }}">Let the copilot run it</button>{% endif %}
+</div>

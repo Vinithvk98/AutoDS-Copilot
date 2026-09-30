@@ -7,8 +7,7 @@ model pipeline to avoid data leakage.</p>
     <ul class="insights">{% for n in plan.notes %}<li>{{ n }}</li>{% endfor %}</ul>
   </div>
   {% if why %}
-  <div class="rationale"><span class="rationale-why">Why</span> {{ why.text }}
-    <span class="rationale-src">Source, {{ why.source }}</span></div>
+  <div class="rationale" data-enhance="why-clean" data-sid="{{ sid }}">{% include 'partials/_rationale_inner.html' %}</div>
   {% endif %}
   <div class="grid2">
     <div class="card">

@@ -9,6 +9,11 @@
 <p class="muted">Checked across {{ cv.folds }} folds of the data, the {{ cv.metric }} holds at
 about {{ cv.mean }} give or take {{ cv.std }}, so the score above is not a one off.</p>
 {% endif %}
+<div class="card summary" data-enhance="summary" data-sid="{{ sid }}">
+  <h3>Executive summary</h3>
+  <p>{{ model_name }} was trained for a {{ task.task_type }} task{% if task.target %} on <code>{{ task.target }}</code>{% endif %}.
+  {% if metrics.accuracy is defined %}It reached {{ metrics.accuracy }} accuracy and {{ metrics.f1 }} F1 on held-out data.{% elif metrics.r2 is defined %}It explains {{ metrics.r2 }} of the variance with RMSE {{ metrics.rmse }}.{% elif metrics.silhouette is defined %}It found {{ metrics.n_clusters }} clusters with silhouette {{ metrics.silhouette }}.{% endif %}</p>
+</div>
 <div class="grid2">
   <div class="card"><h3>Diagnostic plots</h3><div class="gallery">
     {% for p in plots %}<figure class="chart"><img src="{{ p }}" loading="lazy"></figure>{% endfor %}
@@ -20,8 +25,33 @@ about {{ cv.mean }} give or take {{ cv.std }}, so the score above is not a one o
     </table>{% else %}<p class="muted">Not available for this model.</p>{% endif %}
   </div>
 </div>
+{% if data and data.permutation %}
+<div class="card"><h3>What the model relies on <span class="muted">· permutation importance</span></h3>
+  <p class="muted">How much the held-out score drops when each original column is shuffled.
+  This is model agnostic, so it works even for models with no built-in importances.</p>
+  <table class="kv bars">{% set pmax = data.permutation[0].importance %}
+    {% for f in data.permutation %}<tr><td>{{ f.feature }}</td>
+      <td><span class="bar" style="width: {{ (100 * f.importance / pmax)|round(0) }}%"></span></td>
+      <td class="num">{{ f.importance }}</td></tr>{% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if data and data.errors and data.errors.by_group %}
+<div class="card"><h3>Where it makes mistakes</h3>
+  <p class="muted">Overall error rate {{ data.errors.error_rate }}
+  ({{ data.errors.n_errors }} of {{ data.errors.n_test }}). By group, most error-prone first.</p>
+  {% for g in data.errors.by_group %}
+  <div class="err-group"><b>{{ g.feature }}</b>
+    <table class="kv">
+      {% for r in g.rows %}<tr><td>{{ r.value }}</td>
+        <td>{{ (r.error_rate * 100)|round(0) }} percent wrong</td>
+        <td class="muted">n = {{ r.n }}</td></tr>{% endfor %}
+    </table>
+  </div>{% endfor %}
+</div>
+{% endif %}
 <div class="card"><h3>Post-modelling insights</h3>
-  <ul class="insights">{% for b in post_insights %}<li>{{ b }}</li>{% endfor %}</ul>
+  <ul class="insights" data-enhance="post" data-sid="{{ sid }}">{% for b in post_insights %}<li>{{ b }}</li>{% endfor %}</ul>
 </div>
 {% if snippet %}
 <div class="card"><h3>Use this model</h3>

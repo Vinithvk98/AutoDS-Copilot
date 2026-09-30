@@ -132,6 +132,23 @@
     stage.innerHTML = data.html;
     document.querySelector('.stagewrap').scrollTo({top:0, behavior:'smooth'});
     log(data.log); setRail(data.rail);
+    enhance();
+  }
+
+  // ----- background AI enhancement: pages render instantly with rule-based
+  //       text, then the grounded LLM version is fetched and swapped in -----
+  async function enhance(){
+    if(!state.sid) return;
+    const els = [...stage.querySelectorAll('[data-enhance]')];
+    for(const el of els){
+      el.classList.add('enhancing');
+      try{
+        const r = await fetch('/api/enhance/'+state.sid+'/'+el.dataset.enhance);
+        const j = await r.json().catch(()=>({}));
+        if(j && j.html) el.innerHTML = j.html;
+      }catch(e){ /* keep the rule-based text on any failure */ }
+      el.classList.remove('enhancing');
+    }
   }
 
   // ----- upload (special: upload -> explore) -----
@@ -146,12 +163,87 @@
     }catch(err){ append('⚠ '+err.message); }
   }
 
+  // ----- ask (multi-turn chat: stream a grounded answer, compute from data) -----
+  async function doAsk(form){
+    const input = form.querySelector('input[name=question]');
+    const q = (input.value || '').trim();
+    if(!q) return;
+    const chat = stage.querySelector('#chat');
+    if(!chat) return;
+    // auto-scroll only while the user is at the bottom; if they scroll up to
+    // read, stop following so streaming does not yank them back down
+    if(!chat._wired){
+      chat.addEventListener('scroll', ()=>{
+        chat._stick = (chat.scrollHeight - chat.scrollTop - chat.clientHeight) < 48;
+      });
+      chat._wired = true;
+    }
+    const follow = ()=>{ if(chat._stick !== false) chat.scrollTop = chat.scrollHeight; };
+    chat._stick = true;  // a fresh question snaps to the newest turn
+    input.value = '';
+    // user bubble (textContent to avoid injection)
+    const ub = document.createElement('div'); ub.className = 'bubble user'; ub.textContent = q;
+    chat.appendChild(ub);
+    // assistant bubble with a compute slot, streaming answer, and sources slot
+    chat.insertAdjacentHTML('beforeend',
+      '<div class="bubble bot"><div class="compute-slot"></div>'
+      + '<div class="ans streaming"></div><div class="src-slot"></div></div>');
+    const bubble = chat.lastElementChild;
+    const ansEl = bubble.querySelector('.ans');
+    const computeEl = bubble.querySelector('.compute-slot');
+    const srcEl = bubble.querySelector('.src-slot');
+    follow();
+    append('[Ask] ' + q.slice(0,50));
+    busy(true);
+    try{
+      const fd = new FormData(); fd.append('question', q);
+      const resp = await fetch('/api/ask_stream/'+state.sid, {method:'POST', body:fd});
+      if(!resp.ok || !resp.body) throw new Error('HTTP '+resp.status);
+      const reader = resp.body.getReader(), dec = new TextDecoder(); let buf='';
+      for(;;){
+        const {value, done} = await reader.read(); if(done) break;
+        buf += dec.decode(value, {stream:true});
+        let i;
+        while((i = buf.indexOf('\n\n')) >= 0){
+          const block = buf.slice(0, i); buf = buf.slice(i+2);
+          const nl = block.indexOf('\n'); if(nl < 0) continue;
+          const ev = block.slice(0, nl).replace('event: ','');
+          const data = block.slice(nl+1).replace('data: ','');
+          if(ev === 'token'){ ansEl.textContent += JSON.parse(data); }
+          else if(ev === 'compute'){ computeEl.innerHTML = JSON.parse(data); }
+          else if(ev === 'sources'){ srcEl.innerHTML = JSON.parse(data); }
+          follow();
+        }
+      }
+    }catch(err){ if(!ansEl.textContent) ansEl.textContent = '⚠ ' + err.message; }
+    finally{ ansEl.classList.remove('streaming'); busy(false); input.focus({preventScroll:true}); follow(); }
+  }
+
+  // ----- auto-pilot: run the agent's approved plan through the pipeline -----
+  async function autorun(){
+    const el = stage.querySelector('#autoplan');
+    if(!el) return;
+    let plan; try{ plan = JSON.parse(el.dataset.plan); }catch(e){ return; }
+    append('[Agent] running the approved plan');
+    try{
+      const fd1 = new FormData();
+      (plan.drop_columns || []).forEach(c => fd1.append('drop', c));
+      if(plan.drop_duplicates) fd1.append('drop_duplicates', 'on');
+      await call('/api/models/'+state.sid, {method:'POST', body:fd1});
+      append('[Agent] cleaned the data, chose ' + plan.model);
+      const fd2 = new FormData(); fd2.append('model', plan.model);
+      render(await call('/api/train/'+state.sid, {method:'POST', body:fd2}));
+      append('[Agent] trained and evaluated ' + plan.model);
+    }catch(err){ append('⚠ ' + err.message); }
+  }
+
   // ----- delegated form submits -----
   document.addEventListener('submit', async e=>{
     const form = e.target.closest('[data-form]'); if(!form) return;
     e.preventDefault();
     const act = form.dataset.submit;
     if(act === 'upload') return doUpload(form);
+    if(act === 'ask') return doAsk(form);
     try{
       const data = await call('/api/'+act+'/'+state.sid, {method:'POST', body:new FormData(form)});
       render(data);
@@ -163,10 +255,12 @@
     const go = e.target.closest('[data-go]'); if(!go) return;
     const act = go.dataset.go;
     if(act === 'restart') return restart();
+    if(act === 'autorun') { e.preventDefault(); return autorun(); }
     e.preventDefault();
     try{
       let url, opts;
-      if(act === 'clean')       url = '/api/clean/'+state.sid;
+      if(act === 'autopilot')   url = '/api/autopilot/'+state.sid;   // GET
+      else if(act === 'clean')  url = '/api/clean/'+state.sid;
       else if(act === 'leaderboard') url = '/api/leaderboard/'+state.sid;
       else if(act === 'models') url = '/api/models/'+state.sid;      // GET
       else if(act === 'predict') url = '/api/predict/'+state.sid;    // GET (form)

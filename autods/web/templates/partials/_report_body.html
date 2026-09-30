@@ -21,6 +21,22 @@
     <table class="kv bars">{% set maxv = sec.features[0].importance %}
       {% for f in sec.features %}<tr><td>{{ f.feature.split('__')[-1].replace('_',' ') }}</td>
         <td><span class="bar" style="width: {{ (100 * f.importance / maxv)|round(0) }}%"></span></td></tr>{% endfor %}</table>{% endif %}
+    {% if sec.permutation %}
+    <table class="kv bars">{% set pmax = sec.permutation[0].importance %}
+      {% for f in sec.permutation %}<tr><td>{{ f.feature }}</td>
+        <td><span class="bar" style="width: {{ (100 * f.importance / pmax)|round(0) }}%"></span></td>
+        <td class="num">{{ f.importance }}</td></tr>{% endfor %}</table>{% endif %}
+    {% if sec.stats %}
+    <table class="kv stats"><tr>{% for c in sec.stats.cols %}<th>{{ c }}</th>{% endfor %}</tr>
+      {% for row in sec.stats.rows %}<tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</table>{% endif %}
+    {% if sec.fairness %}
+    {% for g in sec.fairness %}<div class="report-sub2"><b>{{ g.feature }}</b> selection gap {{ g.selection_gap }}</div>
+      <table class="kv">{% for r in g.groups %}<tr><td>{{ r.value }}</td>
+        <td>selection {{ r.selection_rate }}</td><td>accuracy {{ r.accuracy }}</td></tr>{% endfor %}</table>{% endfor %}{% endif %}
+    {% if sec.errors and sec.errors.by_group %}
+    {% for g in sec.errors.by_group %}<div class="report-sub2"><b>{{ g.feature }}</b></div>
+      <table class="kv">{% for r in g.rows %}<tr><td>{{ r.value }}</td>
+        <td>{{ (r.error_rate * 100)|round(0) }} percent wrong</td><td class="num">n {{ r.n }}</td></tr>{% endfor %}</table>{% endfor %}{% endif %}
     {% if sec.chart_urls %}
     <div class="report-figs">{% for u in sec.chart_urls %}<img src="{{ u }}" loading="lazy">{% endfor %}</div>{% endif %}
     {% if sec.note %}<div class="report-note">{{ sec.note }}</div>{% endif %}

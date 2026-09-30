@@ -88,7 +88,7 @@ def train_and_evaluate(path: str, target: str = "", model: str = "") -> dict:
     model_name = model or next((m["name"] for m in recs if m.get("recommended")), recs[0]["name"])
     trained = train.train_model(df, task["task_type"], model_name, target=task["target"],
                                 time_col=task.get("time_col"), text_col=task.get("text_col"),
-                                balanced=task.get("imbalanced", False))
+                                balance=("smote" if task.get("imbalanced") else None))
     ev = evaluate.evaluate(trained)
     dataset = path.split("/")[-1]
     post = insights.post_insights(task["task_type"], model_name, ev, dataset=dataset)

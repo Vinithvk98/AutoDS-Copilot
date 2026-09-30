@@ -154,11 +154,25 @@ def get_retriever(include_memory: bool = True) -> Retriever:
     return _CACHE["retriever"]
 
 
-def rationale(query: str) -> dict | None:
-    """Return the single most relevant guidance snippet for a decision, with its
-    source title, or None. Used to justify recommendations."""
+def rationale(query: str, use_llm: bool | None = None) -> dict | None:
+    """Return a grounded "why" for a decision as {text, source}, or None.
+
+    ``use_llm`` mirrors the insight functions: ``None`` uses a model when
+    configured, the web layer passes ``False`` for an instant rule-based snippet
+    and re-requests with ``True`` in the background."""
     hits = [h for h in get_retriever().query(query, k=3) if h["kind"] == "guidance"]
-    return {"text": hits[0]["text"], "source": hits[0]["title"]} if hits else None
+    if not hits:
+        return None
+    top = hits[0]
+    if use_llm is None:
+        from .. import llm
+        use_llm = llm.available()
+    if use_llm:
+        from . import generate
+        text = generate.rationale(query, top["text"], top["title"])
+        if text:
+            return {"text": text, "source": top["title"]}
+    return {"text": top["text"], "source": top["title"]}
 
 
 # ----------------------------------------------------------------------------
@@ -196,39 +210,44 @@ def build_run_docs(session: dict) -> list[dict]:
     return docs
 
 
-def answer(question: str, session: dict | None = None, k: int = 3) -> dict:
-    """Answer a question using only retrieved material. Returns
-    {answer, passages, sources}. Uses an LLM to synthesise if a key is present,
-    otherwise stitches the top passages together extractively."""
+def retrieve_for_answer(question: str, session: dict | None = None, k: int = 3):
+    """Run retrieval for a question and return ``(passages, sources)``.
+
+    Split out from :func:`answer` so the web layer can retrieve once and then
+    stream a grounded answer over the same passages. ``passages`` carry the text
+    for grounding, ``sources`` are the lighter title/kind pairs for citation.
+    """
     docs = list(KNOWLEDGE_BASE) + _run_docs_from_memory()
     if session:
         docs = build_run_docs(session) + docs
     hits = Retriever(docs).query(question, k=k)
-    if not hits:
-        return {"answer": "I could not find anything relevant in the knowledge base or "
-                          "this run to answer that.", "passages": [], "sources": []}
     passages = [{"title": h["title"], "text": h["text"], "kind": h["kind"]} for h in hits]
     sources = [{"title": h["title"], "kind": h["kind"]} for h in hits]
+    return passages, sources
 
-    if config.USE_LLM:
-        try:
-            from openai import OpenAI
-            client = OpenAI()
-            context = "\n\n".join(f"[{p['title']}] {p['text']}" for p in passages)
-            resp = client.chat.completions.create(
-                model=config.LLM_MODEL, temperature=0.2,
-                messages=[
-                    {"role": "system", "content": "Answer only from the provided context. "
-                     "Be concise and plain. If the context does not cover it, say so."},
-                    {"role": "user", "content": f"Question: {question}\n\nContext:\n{context}"},
-                ])
-            return {"answer": resp.choices[0].message.content.strip(),
-                    "passages": passages, "sources": sources}
-        except Exception:
-            pass
 
-    # extractive fallback
+def _extractive(passages: list[dict]) -> str:
+    """Fallback answer: stitch the top retrieved passages together."""
+    if not passages:
+        return ("I could not find anything relevant in the knowledge base or this "
+                "run to answer that.")
     lead = passages[0]["text"]
     if len(passages) > 1:
         lead += " " + passages[1]["text"]
-    return {"answer": lead, "passages": passages, "sources": sources}
+    return lead
+
+
+def answer(question: str, session: dict | None = None, k: int = 3) -> dict:
+    """Answer a question using only retrieved material. Returns
+    {answer, passages, sources}. Uses the grounded LLM if a model is configured,
+    otherwise stitches the top passages together extractively."""
+    passages, sources = retrieve_for_answer(question, session, k)
+    if not passages:
+        return {"answer": _extractive(passages), "passages": [], "sources": []}
+
+    # Grounded LLM answer over the retrieved passages (which already include the
+    # current run's facts when a session is supplied). Falls back if no model.
+    from . import generate
+    text = generate.answer(question, passages)
+    return {"answer": text or _extractive(passages),
+            "passages": passages, "sources": sources}

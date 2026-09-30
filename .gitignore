@@ -2,9 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-outputs/eda/
-outputs/eval/
-outputs/uploads/
+# generated run artifacts (EDA, eval, models, predictions, run memory, uploads)
+outputs/
 .DS_Store
 .env
 

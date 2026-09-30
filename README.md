@@ -159,12 +159,29 @@ AutoDS_Copilot/
   choice.
 - **Trustworthy evaluation.** Cross-validation on the final model, and tuning that
   actually retrains and replaces the model.
-- **Grounded, not hallucinated.** Insights and answers are backed by retrieval,
-  and everything works with zero API keys because the LLM step is optional.
+- **Grounded, not hallucinated.** Insights, answers, and recommendation rationale
+  are written from retrieved knowledge and the run's real numbers, never invented.
+  Everything works with zero API keys because the LLM step is optional.
+
+### Turning on the LLM copilot
+
+By default the copilot writes solid rule-based text and needs no key. Point it at
+a model and the same outputs become richer, fuller prose, still grounded strictly
+in the retrieved notes and the run's verified facts. It is provider-agnostic, set
+one of these (copy `.env.example` to `.env`, which is gitignored so keys never get
+committed):
+
+- `OPENAI_API_KEY` for OpenAI, or `ANTHROPIC_API_KEY` for Claude
+- a local [Ollama](https://ollama.com) server for a free, offline model
+
+Force a provider or model with `AUTODS_LLM_PROVIDER` and `AUTODS_LLM_MODEL`;
+otherwise it auto-detects whichever key is present. If a model is unavailable or
+errors, it silently falls back to the rule-based text.
 - **Time series done right.** The differenced target plus lag and calendar
   features, and a time-ordered split.
 
 ## Requirements
 
 Python 3.10+, pandas, numpy, scikit-learn, matplotlib, seaborn, joblib, Flask,
-langgraph, mcp. Optional: xgboost, lightgbm, and an OpenAI key for richer wording.
+langgraph, mcp. Optional: xgboost, lightgbm, and an LLM provider (OpenAI,
+Anthropic, or local Ollama) for richer, grounded wording.

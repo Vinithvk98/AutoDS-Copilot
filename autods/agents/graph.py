@@ -114,7 +114,7 @@ def train_node(state: AutoDSState) -> dict:
     t = state["task"]
     trained = train.train_model(store["df"], t["task_type"], state["chosen_model"],
                                 target=t["target"], time_col=t.get("time_col"),
-                                text_col=t.get("text_col"), balanced=t.get("imbalanced", False))
+                                text_col=t.get("text_col"), balance=("smote" if t.get("imbalanced") else None))
     store["trained"] = trained
     return {"log": _log(state, f"[Trainer] trained {state['chosen_model']}")}
 
