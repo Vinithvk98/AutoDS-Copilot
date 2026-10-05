@@ -49,6 +49,20 @@ def test_evaluate_includes_explainability(df):
     assert "permutation" in ev["data"] and "errors" in ev["data"]
 
 
+def test_report_inlines_diagnostic_charts(df):
+    from autods.pipeline import report
+    tr = _trained(df)
+    ev = evaluate.evaluate(tr)
+    # the diagnostic plots are produced and tagged by name
+    assert "confusion" in ev["data"]["plots"] and "calibration" in ev["data"]["plots"]
+    s = {"path": "d.csv", "profile": {}, "model_name": "RandomForestClassifier",
+         "task": {"task_type": "classification", "target": "churned"},
+         "evaluation": ev, "pre_insights": [], "post_insights": []}
+    rep = report.build_report(s)
+    charts = [c for sec in rep["sections"] for c in sec.get("eval_charts", [])]
+    assert "confusion" in charts and "calibration" in charts
+
+
 # ---- executive summary + comparison (grounded) ----------------------------
 def test_executive_summary_none_offline(monkeypatch):
     monkeypatch.setattr("autods.llm.available", lambda: False)

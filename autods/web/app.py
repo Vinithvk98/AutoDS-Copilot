@@ -725,12 +725,20 @@ def _attach_charts(rep, s):
             if kw.lower() in c["title"].lower():
                 return url_for("outputs", relpath=_rel(c["path"]))
         return None
+    eval_plots = s.get("evaluation", {}).get("data", {}).get("plots", {})
     for sec in rep["sections"]:
         urls = []
         for kw in sec.get("charts", []):
             u = url_for_title(kw)
             if u and u not in urls:
                 urls.append(u)
+        # model diagnostic plots (confusion matrix, calibration curve, etc.)
+        for key in sec.get("eval_charts", []):
+            path = eval_plots.get(key)
+            if path:
+                u = url_for("outputs", relpath=_rel(path))
+                if u not in urls:
+                    urls.append(u)
         sec["chart_urls"] = urls
     return rep
 
@@ -751,7 +759,12 @@ def api_ask(sid):
     s = SESSIONS.get(sid) or abort(404)
     question = (request.form.get("question") or "").strip() if request.method == "POST" else ""
     result = rag.answer(question, session=s) if question else None
-    html = render_template("partials/ask.html", sid=sid, result=result, question=question)
+    df = s.get("df_clean")
+    if df is None:
+        df = s.get("df")
+    suggestions = converse.suggest_questions(df, s.get("task")) if df is not None else []
+    html = render_template("partials/ask.html", sid=sid, result=result, question=question,
+                           suggestions=suggestions)
     log = [f"[Ask] answered '{question[:40]}' from {len(result['sources'])} sources"] if result else []
     return _api("ask", html, log, {"active": 5})
 
@@ -826,11 +839,20 @@ def api_ask_stream(sid):
     df = s.get("df_clean")
     if df is None:
         df = s.get("df")
-    facts, meta = converse.analyze(question, df, history=s.get("chat")) if df is not None else (None, None)
+    facts, meta = (converse.analyze(question, df, task=s.get("task"), history=s.get("chat"))
+                   if df is not None else (None, None))
+    clarify = meta.get("clarify") if meta else None
     sources_html = render_template("partials/_sources.html", passages=passages)
-    compute_html = render_template("partials/_compute.html", meta=meta) if meta else None
+    compute_html = (render_template("partials/_compute.html", meta=meta)
+                    if (meta and not clarify) else None)
+    clarify_html = render_template("partials/_clarify.html", meta=meta) if clarify else None
 
     def gen():
+        # an unclear question gets a clarify prompt with options, no answer yet
+        if clarify_html:
+            yield _sse("clarify", clarify_html)
+            yield _sse("done", "")
+            return
         # compute card (what was measured) leads; the answer then streams; the
         # knowledge sources come last so they do not sit growing under the answer
         if compute_html:

@@ -69,7 +69,9 @@ def evaluate(trained: dict, outdir: Path | None = None) -> dict:
             sc = ax.scatter(pcs[:, 0], pcs[:, 1], c=labels, cmap="tab10", s=15)
             ax.set_title("Clusters (PCA projection)")
             ax.set_xlabel("PC1"); ax.set_ylabel("PC2")
-            result["plots"].append(_save(fig, "clusters.png", outdir))
+            cl_path = _save(fig, "clusters.png", outdir)
+            result["plots"].append(cl_path)
+            result["data"].setdefault("plots", {})["clusters"] = cl_path
         except Exception:
             pass
         return result
@@ -104,7 +106,9 @@ def evaluate(trained: dict, outdir: Path | None = None) -> dict:
                     color="white" if v > cm.max() / 2 else "black")
         ax.set_xlabel("predicted"); ax.set_ylabel("actual"); ax.set_title("Confusion matrix")
         fig.colorbar(im, ax=ax, fraction=0.046)
-        result["plots"].append(_save(fig, "confusion.png", outdir))
+        cm_path = _save(fig, "confusion.png", outdir)
+        result["plots"].append(cm_path)
+        result["data"].setdefault("plots", {})["confusion"] = cm_path
         # raw numbers for the interactive dashboard
         labels = sorted(set(y_test.tolist()) | set(np.asarray(y_pred).tolist()), key=str)
         cm2 = metrics.confusion_matrix(y_test, y_pred, labels=labels)
@@ -133,6 +137,20 @@ def evaluate(trained: dict, outdir: Path | None = None) -> dict:
                 result["data"]["calibration"] = rigor.calibration(y_test, proba, pos)
                 result["metrics"]["brier"] = result["data"]["calibration"]["brier"]
                 result["metrics"]["best_threshold"] = result["data"]["threshold"]["tuned"]["threshold"]
+                # calibration (reliability) curve: predicted chance vs what happened
+                curve = result["data"]["calibration"].get("curve", [])
+                if curve:
+                    xs = [p["mean_pred"] for p in curve]
+                    ys = [p["frac_pos"] for p in curve]
+                    fig, ax = plt.subplots(figsize=(4.6, 4))
+                    ax.plot([0, 1], [0, 1], "--", color="#9a9382", lw=1, label="perfect")
+                    ax.plot(xs, ys, "-o", color="#2a44b8", ms=4, label="model")
+                    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+                    ax.set_xlabel("predicted chance"); ax.set_ylabel("actual rate")
+                    ax.set_title("Calibration curve"); ax.legend(loc="upper left", fontsize=9)
+                    cal_path = _save(fig, "calibration.png", outdir)
+                    result["plots"].append(cal_path)
+                    result["data"].setdefault("plots", {})["calibration"] = cal_path
         except Exception:
             pass
         # fairness across low-cardinality categorical features
@@ -181,14 +199,18 @@ def evaluate(trained: dict, outdir: Path | None = None) -> dict:
             ax.plot(idx, list(y_pred), label="forecast", color="#f6ad55")
             ax.set_title("Forecast vs actual (test period)")
             ax.set_xlabel("time step"); ax.legend()
-            result["plots"].append(_save(fig, "forecast.png", outdir))
+            fc_path = _save(fig, "forecast.png", outdir)
+            result["plots"].append(fc_path)
+            result["data"].setdefault("plots", {})["actual_vs_pred"] = fc_path
         else:
             fig, ax = plt.subplots(figsize=(5, 4))
             ax.scatter(y_test, y_pred, alpha=0.5, s=18, color="#4f81bd")
             lo, hi = min(y_test.min(), y_pred.min()), max(y_test.max(), y_pred.max())
             ax.plot([lo, hi], [lo, hi], "r--", lw=1)
             ax.set_xlabel("actual"); ax.set_ylabel("predicted"); ax.set_title("Actual vs predicted")
-            result["plots"].append(_save(fig, "actual_vs_pred.png", outdir))
+            av_path = _save(fig, "actual_vs_pred.png", outdir)
+            result["plots"].append(av_path)
+            result["data"].setdefault("plots", {})["actual_vs_pred"] = av_path
 
     result["feature_importance"] = feature_importance(trained)
     # model-agnostic explainability + error analysis (trust tools)

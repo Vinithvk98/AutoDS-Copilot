@@ -1,4 +1,21 @@
-{% if meta %}
+{% if meta and meta.multi %}
+<div class="card compute">
+  <span class="compute-tag">Investigated your data</span>
+  <code class="compute-call">drivers of {{ meta.target }}</code>
+  {% for b in meta.blocks %}
+  <div class="compute-sub">{{ meta.target }} by {{ b.label }} <span class="muted">spread {{ b.spread }}</span></div>
+  <table class="compute-table">
+    {% for k, v in b.data.items() %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+  </table>
+  {% endfor %}
+  {% if meta.correlations %}
+  <div class="compute-sub">correlations with {{ meta.target }}</div>
+  <table class="compute-table">
+    {% for k, v in meta.correlations.items() %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% elif meta and meta.tool %}
 <div class="card compute">
   <span class="compute-tag">Analyzed your data</span>
   <code class="compute-call">{{ meta.tool }}{% if meta.args %}({{ meta.args }}){% endif %}</code>

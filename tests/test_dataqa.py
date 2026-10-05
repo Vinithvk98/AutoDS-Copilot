@@ -69,6 +69,38 @@ def test_analyze_noop_without_model(df, monkeypatch):
     assert converse.analyze("churn by plan", df) == (None, None)
 
 
+# ---- suggested questions ---------------------------------------------------
+def test_suggest_questions_from_schema(df, task):
+    qs = converse.suggest_questions(df, task)
+    assert qs and any("rate by" in q for q in qs)
+    assert any("drives" in q for q in qs) and any("correlate" in q for q in qs)
+
+
+# ---- multi-step why analysis ----------------------------------------------
+def test_multi_why_chains_and_ranks(df, task, monkeypatch):
+    monkeypatch.setattr("autods.llm.available", lambda: True)
+    facts, meta = converse.analyze("why do customers churn", df, task=task)
+    assert meta["multi"] is True and meta["blocks"]
+    spreads = [b["spread"] for b in meta["blocks"]]
+    assert spreads == sorted(spreads, reverse=True)      # ranked by how much it moves
+    assert "Driver analysis" in facts and meta["correlations"]
+
+
+# ---- clarify ---------------------------------------------------------------
+def test_clarify_on_vague_data_question(df, task, monkeypatch):
+    monkeypatch.setattr("autods.llm.available", lambda: True)
+    monkeypatch.setattr("autods.llm.complete", lambda s, u, **k: '{"tool": "none"}')
+    facts, meta = converse.analyze("show the breakdown by region", df, task=task)
+    assert facts is None and meta.get("clarify") and meta.get("options")
+
+
+def test_conceptual_question_is_not_clarified(df, task, monkeypatch):
+    monkeypatch.setattr("autods.llm.available", lambda: True)
+    monkeypatch.setattr("autods.llm.complete", lambda s, u, **k: '{"tool": "none"}')
+    # a general concept with no data words falls through to the knowledge base
+    assert converse.analyze("what is overfitting", df, task=task) == (None, None)
+
+
 # ---- endpoint: data-aware streaming ---------------------------------------
 def test_ask_stream_is_data_aware(df, monkeypatch):
     from autods.web import app as webapp

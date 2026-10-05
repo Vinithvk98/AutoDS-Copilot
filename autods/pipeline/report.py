@@ -145,9 +145,12 @@ def build_report(s: dict) -> dict:
              "below stay honest.")]})
 
     # --- 6. How well it does --------------------------------------------
+    perf_chart = {"classification": ["confusion"], "text": ["confusion"],
+                  "regression": ["actual_vs_pred"], "timeseries": ["actual_vs_pred"],
+                  "clustering": ["clusters"]}.get(ttype, [])
     sections.append({"heading": "How well it does",
                      "paras": [_performance_sentence(ttype, model, metrics)],
-                     "metrics": metrics})
+                     "metrics": metrics, "eval_charts": perf_chart})
 
     # --- 7. What the model relies on ------------------------------------
     perm = data.get("permutation")
@@ -196,7 +199,7 @@ def build_report(s: dict) -> dict:
             "into, not a verdict.")
     if rel_paras:
         sections.append({"heading": "How reliable and fair it is", "paras": rel_paras,
-                         "stats": stats, "fairness": fair})
+                         "stats": stats, "fairness": fair, "eval_charts": ["calibration"]})
 
     # --- 9. Where it makes mistakes -------------------------------------
     errs = data.get("errors")

@@ -46,7 +46,10 @@ runs fully offline on rule based text. `.env` is gitignored; never commit keys.
 - `autods/llm.py` provider agnostic LLM layer (OpenAI, Anthropic, Ollama; complete
   and stream). `autods/config.py` settings and `.env` loading.
 - `autods/converse.py` + `autods/dataqa.py` the conversational data copilot
-  (routes a question to a safe pandas tool, answers from real numbers).
+  (routes a question to a safe pandas tool, answers from real numbers; also does
+  multi-step why analysis that chains several tools, clarifying questions when a
+  question is ambiguous, and suggested starter questions from the schema). Voice
+  input is in the Ask UI via the browser speech API.
 - `autods/planner.py` the agentic auto-pilot (cross validates, picks the best
   model, proposes a full plan to approve).
 - `autods/web/` Flask app. `app.py` routes, `templates/` (landing.html is a
@@ -73,7 +76,8 @@ runs fully offline on rule based text. `.env` is gitignored; never commit keys.
 ## Current status
 
 The core roadmap is complete and tested (70 tests passing):
-1. Conversational data copilot (ask questions of your real data).
+1. Conversational data copilot (ask questions of your real data, with multi-step
+   why analysis, clarifying questions, suggested questions, and voice input).
 2. Modeling rigor (SMOTE and oversampling, threshold tuning, calibration,
    fairness) plus a visible Class Balance proof step.
 3. Explainability (permutation importance, error analysis, executive summary,
@@ -81,15 +85,15 @@ The core roadmap is complete and tested (70 tests passing):
 4. Agentic auto-pilot (proposes and runs a full plan on approval, choosing the
    best model by cross validation).
 Plus a grounded LLM layer with streaming, instant pages with background AI
-enhancement, an expanded 10 section analysis report, a redesigned landing page,
-and a white UI across all pages.
+enhancement, an expanded 10 section analysis report with inline diagnostic charts
+(confusion matrix and calibration curve), a redesigned landing page, and a white
+UI across all pages.
 
 ## Possible next steps (not started)
 
 - Wrap the data copilot or the planner into the LangGraph graph or expose them as
   MCP tools (would grow the 9 and 9 counts).
 - Add SHAP force or beeswarm plots as an optional explainability path.
-- Inline the diagnostic charts (confusion matrix, calibration curve) into the report.
 - Give the About and Algorithms pages a hero header to match the landing page.
 
 ## Companion repo

@@ -1,0 +1,6 @@
+<div class="clarify">
+  <div class="clarify-q">{{ meta.clarify }}</div>
+  <div class="chips">
+    {% for opt in meta.options %}<button type="button" class="chip-q" data-q="{{ opt }}">{{ opt }}</button>{% endfor %}
+  </div>
+</div>
