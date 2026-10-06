@@ -20,6 +20,7 @@ from .. import rag
 from .. import llm
 from .. import converse
 from .. import planner
+from .. import decision
 
 app = Flask(__name__)
 app.config["UPLOAD_DIR"] = config.OUTPUT_DIR / "uploads"
@@ -58,6 +59,31 @@ def classic():
     """The original multi-page flow (kept as a fallback)."""
     samples = [p.name for p in config.DATA_DIR.glob("*.csv")]
     return render_template("index.html", samples=samples)
+
+
+@app.route("/studio")
+def studio():
+    """Decision Studio: the no-code decision intelligence mode."""
+    samples = [p.name for p in config.DATA_DIR.glob("*.csv")]
+    return render_template("studio.html", samples=samples)
+
+
+@app.route("/api/studio/<sid>")
+def api_studio(sid):
+    """The auto dashboard overview (KPIs, trend, breakdowns, findings, recommendation)."""
+    s = SESSIONS.get(sid) or abort(404)
+    df = s.get("df_clean")
+    if df is None:
+        df = s.get("df")
+    if df is None:
+        abort(400)
+    ov = decision.build_overview(df)
+    # let the copilot do why analysis on the primary measure in this mode
+    primary = next((m for m in ov.get("measures", [])), None)
+    if primary and "task" not in s:
+        s["task"] = {"target": primary, "task_type": "regression"}
+    ov["suggestions"] = converse.suggest_questions(df, s.get("task"))
+    return jsonify(ov)
 
 
 def _algorithms_data():

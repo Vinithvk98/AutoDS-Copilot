@@ -12,6 +12,12 @@ handles class imbalance honestly, and writes up the result in plain language. A
 grounded AI copilot answers questions about the actual data, and an agent can plan
 the whole run for you to approve. It runs locally and needs no API key by default.
 
+AutoDS has two modes. Model Studio (the main app at /app) predicts, as above.
+Decision Studio (at /studio, see docs/DECISION_STUDIO.md) is the no-code decision
+intelligence mode: it auto builds a dashboard, finds what is notable, and
+recommends a move with an estimated impact, with the same copilot over the data.
+Phase 1 is built; the deeper phases (what-if, causal, optimization) are planned.
+
 It is a portfolio project by Vinith Kumar that demonstrates a full, production
 minded ML system: multi agent pipeline, RAG, MCP server, a grounded LLM copilot,
 and genuine ML rigor (leakage safety, imbalance handling, calibration, fairness,
@@ -52,6 +58,10 @@ runs fully offline on rule based text. `.env` is gitignored; never commit keys.
   input is in the Ask UI via the browser speech API.
 - `autods/planner.py` the agentic auto-pilot (cross validates, picks the best
   model, proposes a full plan to approve).
+- `autods/decision.py` the Decision Studio engine (detects measure, dimension and
+  time roles, then builds KPIs, a trend, breakdowns, key findings and a grounded
+  recommendation with an estimated impact). Served by the /studio route and
+  /api/studio, rendered by templates/studio.html with Chart.js.
 - `autods/web/` Flask app. `app.py` routes, `templates/` (landing.html is a
   self contained redesigned marketing page; `console.html` is the SPA shell;
   `partials/` are the step views), `static/style.css` the shared design system.
@@ -91,6 +101,9 @@ UI across all pages.
 
 ## Possible next steps (not started)
 
+- Decision Studio Phase 2 and beyond: what-if sliders, goal seeking, a polished
+  executive share view, then causal methods and optimization. See
+  docs/DECISION_STUDIO.md for the phased plan.
 - Wrap the data copilot or the planner into the LangGraph graph or expose them as
   MCP tools (would grow the 9 and 9 counts).
 - Add SHAP force or beeswarm plots as an optional explainability path.
