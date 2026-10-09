@@ -83,9 +83,18 @@ runs fully offline on rule based text. `.env` is gitignored; never commit keys.
 - The sandbox cannot write to `.git`. Commits and pushes are done by the user from
   their Mac.
 
-## Current status
+## Where to start now (read this)
 
-The core roadmap is complete and tested (70 tests passing):
+Everything below is built, pushed, and tested (81 tests passing, run
+`python3 -m pytest -q` to confirm). The immediate next task is **Decision Studio
+Phase 2**. Open `docs/DECISION_STUDIO.md`, go to the "Phase 2 starting point"
+section, and build from there. Keep everything grounded and in the house style,
+and run the test suite as you go. Before coding, if there is any uncommitted work,
+commit and push it.
+
+## Current status (done)
+
+Model Studio (the ML mode) core roadmap, all tested:
 1. Conversational data copilot (ask questions of your real data, with multi-step
    why analysis, clarifying questions, suggested questions, and voice input).
 2. Modeling rigor (SMOTE and oversampling, threshold tuning, calibration,
@@ -99,11 +108,17 @@ enhancement, an expanded 10 section analysis report with inline diagnostic chart
 (confusion matrix and calibration curve), a redesigned landing page, and a white
 UI across all pages.
 
-## Possible next steps (not started)
+Decision Studio (the decision intelligence mode), Phase 1 done: the /studio route,
+the auto dashboard (KPIs with period change, trend, breakdowns), key findings, a
+grounded recommendation with an estimated impact, and the copilot over the same
+data. Engine in `autods/decision.py`, page in `templates/studio.html`, tests in
+`tests/test_decision.py`.
 
-- Decision Studio Phase 2 and beyond: what-if sliders, goal seeking, a polished
-  executive share view, then causal methods and optimization. See
-  docs/DECISION_STUDIO.md for the phased plan.
+## Next steps
+
+- **Decision Studio Phase 2 (do this next)**: what-if sliders, goal seeking, a
+  polished executive share view. Then Phase 3 (causal, optimization). Full plan in
+  docs/DECISION_STUDIO.md.
 - Wrap the data copilot or the planner into the LangGraph graph or expose them as
   MCP tools (would grow the 9 and 9 counts).
 - Add SHAP force or beeswarm plots as an optional explainability path.

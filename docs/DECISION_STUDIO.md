@@ -81,5 +81,42 @@ long dashes, or curly quotes in user facing copy.
 
 ## Status
 
-Phase 1 is being built. See `autods/decision.py`, the `/studio` route, and
-`templates/studio.html`.
+Phase 1 is complete, pushed, and tested.
+
+- Engine: `autods/decision.py` (`build_overview(df)` returns measures, dimensions,
+  time, kpis, trend, breakdowns, findings, recommendation).
+- Web: the `/studio` page and `/api/studio/<sid>` endpoint in `autods/web/app.py`,
+  rendered by `autods/web/templates/studio.html` with Chart.js. Entry points are on
+  the landing page ("Explore decisions") and its nav.
+- Tests: `tests/test_decision.py`.
+
+To see it, run `python3 run.py` and open /studio, or click "Explore decisions" on
+the landing page.
+
+## Phase 2 starting point (do this next)
+
+Build these three, in order, each grounded and in the house style, with tests, and
+run `python3 -m pytest -q` as you go.
+
+1. **What-if sliders.** On the Decision Studio dashboard, let the user move the
+   primary measure for a chosen group (for example drag West's on-time rate up) and
+   show the estimated effect on the overall number, live. The math already exists in
+   `decision.py` `_recommend` (gap times the group's share). Factor that into a
+   reusable `estimate_effect(df, measure, dimension, group, new_value)` function,
+   add an endpoint `/api/studio/<sid>/whatif`, and wire a slider per group under the
+   breakdown chart in `studio.html`. Label everything as an estimate.
+
+2. **Goal seeking.** Let the user set a target for the primary measure (for example
+   overall on-time rate of 60 percent) and compute what would have to change to get
+   there, framed as the smallest feasible move across the top driver groups. Add
+   `goal_seek(df, measure, target)` to `decision.py` and surface it as a small panel
+   with the recommended changes and the resulting estimate.
+
+3. **Executive share view.** A clean, print and present ready page (like the model
+   report's "Open as a page") that lays out the KPIs, the trend, the top breakdown,
+   the key findings, and the recommendation, with a Save as PDF button. Reuse the
+   report page pattern. Route `/studio/<sid>/report`.
+
+Keep the copilot Ask box working on the same session throughout. When Phase 2 is
+done, update this file and `CLAUDE.md`, then move on to Phase 3 (causal methods and
+optimization) from the roadmap above.
