@@ -68,15 +68,20 @@ def studio():
     return render_template("studio.html", samples=samples)
 
 
-@app.route("/api/studio/<sid>")
-def api_studio(sid):
-    """The auto dashboard overview (KPIs, trend, breakdowns, findings, recommendation)."""
+def _studio_df(sid):
     s = SESSIONS.get(sid) or abort(404)
     df = s.get("df_clean")
     if df is None:
         df = s.get("df")
     if df is None:
         abort(400)
+    return s, df
+
+
+@app.route("/api/studio/<sid>")
+def api_studio(sid):
+    """The auto dashboard overview (KPIs, trend, breakdowns, findings, recommendation)."""
+    s, df = _studio_df(sid)
     ov = decision.build_overview(df)
     # let the copilot do why analysis on the primary measure in this mode
     primary = next((m for m in ov.get("measures", [])), None)
@@ -84,6 +89,58 @@ def api_studio(sid):
         s["task"] = {"target": primary, "task_type": "regression"}
     ov["suggestions"] = converse.suggest_questions(df, s.get("task"))
     return jsonify(ov)
+
+
+@app.route("/api/studio/<sid>/whatif", methods=["GET", "POST"])
+def api_studio_whatif(sid):
+    """What if one or more groups moved. Takes a dimension and either one group
+    and value, or a map of group to new value (JSON body). Returns the estimate."""
+    s, df = _studio_df(sid)
+    body = request.get_json(silent=True) or {}
+    arg = lambda k: body.get(k, request.values.get(k))
+    measure = arg("measure") or decision.primary_measure(df)
+    dimension = arg("dimension")
+    changes = body.get("changes")
+    if not changes and arg("group") is not None:
+        changes = {arg("group"): arg("value")}
+    if not dimension or not changes:
+        return jsonify({"error": "Choose a dimension and at least one group to move."}), 400
+    try:
+        return jsonify(decision.estimate_effects(df, measure, dimension, changes))
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/studio/<sid>/goal", methods=["GET", "POST"])
+def api_studio_goal(sid):
+    """Goal seeking. What would it take for the overall measure to hit a target."""
+    s, df = _studio_df(sid)
+    body = request.get_json(silent=True) or {}
+    target = body.get("target", request.values.get("target"))
+    measure = body.get("measure", request.values.get("measure"))
+    try:
+        target = float(target)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Enter a number for the target."}), 400
+    try:
+        return jsonify(decision.goal_seek(df, measure, target))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/studio/<sid>/report")
+def studio_report(sid):
+    """The executive share view, a clean page to present or save as a PDF."""
+    s, df = _studio_df(sid)
+    ov = decision.build_overview(df)
+    goal = None
+    if request.args.get("target"):
+        try:
+            goal = decision.goal_seek(df, None, float(request.args["target"]))
+        except ValueError:
+            goal = None
+    return render_template("studio_report.html", ov=ov, goal=goal,
+                           dataset=Path(s.get("path", "data")).name)
 
 
 def _algorithms_data():

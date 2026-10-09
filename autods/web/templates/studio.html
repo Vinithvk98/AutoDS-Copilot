@@ -40,6 +40,26 @@
     .askrow{display:flex;gap:10px}
     .askrow input{flex:1;border:1px solid var(--line-2);border-radius:9px;padding:11px 13px;font:inherit;font-size:14.5px}
     .askrow input:focus{outline:none;border-color:var(--accent)}
+    .wi-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .wi-head select{border:1px solid var(--line-2);border-radius:8px;padding:7px 10px;font:inherit;font-size:13.5px}
+    .wi-rows{display:grid;gap:10px;margin:14px 0 6px}
+    .wi-row{display:grid;grid-template-columns:minmax(90px,150px) 1fr 110px;gap:12px;align-items:center;font-size:14px}
+    .wi-row .g{font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .wi-row .g small{display:block;font-weight:400;color:var(--ink-3);font-size:11.5px}
+    .wi-row input[type=range]{width:100%;accent-color:var(--accent)}
+    .wi-row .val{font-family:var(--mono);font-size:13px;text-align:right;color:var(--ink-2)}
+    .wi-row.moved .val{color:var(--accent-2);font-weight:600}
+    @media(max-width:560px){.wi-row{grid-template-columns:1fr 90px}.wi-row input[type=range]{grid-column:1/-1;grid-row:2}}
+    .wi-out{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+    .wi-out .big{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--ink)}
+    .est-tag{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--warm);background:var(--warm-soft);border:1px solid #e6cdb8;border-radius:99px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+    .fine{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-top:6px}
+    .goal-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .goal-row input{width:150px;border:1px solid var(--line-2);border-radius:9px;padding:10px 12px;font:inherit;font-size:14.5px}
+    .goal-row input:focus{outline:none;border-color:var(--accent)}
+    .goal-list{margin:10px 0 0;padding-left:18px}
+    .goal-list li{margin:4px 0}
+    .share-row{display:flex;justify-content:flex-end;margin:-6px 0 12px}
     .mode-pill{font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--warm);background:var(--warm-soft);border:1px solid #e6cdb8;border-radius:99px;padding:4px 12px}
   </style>
 </head>
@@ -78,11 +98,42 @@
 
     <div id="board" hidden>
       <div class="ds-hero"><h1 id="dsTitle">Overview</h1><p id="dsSub" class="muted"></p></div>
+      <div class="share-row"><a class="btn" id="shareBtn" href="#" target="_blank" rel="noopener">Open the executive view</a></div>
       <div class="kpis" id="kpis"></div>
       <div class="ds-grid">
         <div class="card"><h3 id="trendTitle">Trend</h3><canvas id="trend" height="200"></canvas>
           <p class="muted" id="trendNA" hidden>No time column found, so there is no trend to show.</p></div>
         <div class="card"><h3 id="breakTitle">Breakdown</h3><canvas id="breakdown" height="200"></canvas></div>
+      </div>
+      <div class="card" id="wiCard" hidden>
+        <div class="wi-head">
+          <h3 style="margin:0">What if <span class="est-tag">Estimate</span></h3>
+          <label class="muted" style="font-size:13px">Move groups of <select id="wiDim"></select></label>
+        </div>
+        <p class="muted" id="wiIntro" style="margin:8px 0 0"></p>
+        <div class="wi-rows" id="wiRows"></div>
+        <div class="wi-out">
+          <div class="big" id="wiText">Drag a slider to see the estimated effect on the overall number.</div>
+          <div class="fine" id="wiMath"></div>
+          <div class="fine" id="wiNote"></div>
+          <button class="btn" id="wiReset" type="button" style="margin-top:10px">Reset</button>
+        </div>
+      </div>
+      <div class="card" id="goalCard" hidden>
+        <h3 style="margin:0">Set a goal <span class="est-tag">Estimate</span></h3>
+        <p class="muted" id="goalIntro" style="margin:8px 0 0"></p>
+        <div class="goal-row">
+          <input id="goalIn" type="number" step="any" inputmode="decimal" aria-label="Target">
+          <span class="muted" id="goalUnit"></span>
+          <button class="btn primary" id="goalBtn" type="button">Find the smallest move</button>
+        </div>
+        <div id="goalOut" hidden class="wi-out">
+          <div class="big" id="goalText"></div>
+          <ul class="goal-list" id="goalList"></ul>
+          <div class="fine" id="goalMath"></div>
+          <div class="fine" id="goalOpts"></div>
+          <div class="fine" id="goalNote"></div>
+        </div>
       </div>
       <div class="card"><h3>Key findings</h3><ul class="insights" id="findings"></ul></div>
       <div class="card rec" id="recCard" hidden>
@@ -106,7 +157,8 @@
   </div>
 
 <script>
-  var state = {sid:null};
+  var state = {sid:null, ov:null, chart:null, wi:null, timer:null, goalTarget:null};
+  var esc = t => String(t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   var el = id => document.getElementById(id);
   var fmt = (v, unit) => (v===null||v===undefined) ? "n/a" : (unit==="percent" ? v+"%" : (typeof v==="number" ? v.toLocaleString() : v));
 
@@ -144,8 +196,8 @@
     if(d.breakdowns && d.breakdowns.length){
       const b = d.breakdowns[0];
       el("breakTitle").textContent = b.measure + " by " + b.dimension;
-      new Chart(el("breakdown"), {type:"bar", data:{labels:Object.keys(b.data),
-        datasets:[{label:b.measure, data:Object.values(b.data), backgroundColor:"#2a44b8"}]},
+      state.chart = new Chart(el("breakdown"), {type:"bar", data:{labels:Object.keys(b.data),
+        datasets:[{label:"Now", data:Object.values(b.data), backgroundColor:"#2a44b8"}]},
         options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}});
     } else { el("breakdown").hidden = true; el("breakTitle").textContent = "Breakdown (not available)"; }
     // findings
@@ -157,9 +209,113 @@
       el("recH").textContent = r.headline; el("recDetail").textContent = r.detail;
       el("recMove").textContent = r.move; el("recEst").textContent = r.estimate; el("recMath").textContent = r.math;
     }
+    state.ov = d;
+    el("shareBtn").href = "/studio/" + state.sid + "/report";
+    setupWhatIf(d); setupGoal(d);
     // suggestions
     el("suggests").innerHTML = (d.suggestions||[]).map(q=>`<button type="button" class="chip-q" data-q="${q}">${q}</button>`).join("");
     el("q").focus();
+  }
+
+  // ---- what if sliders ----
+  function setupWhatIf(d){
+    if(!d.breakdowns || !d.breakdowns.length) return;
+    el("wiCard").hidden = false;
+    el("wiDim").innerHTML = d.breakdowns.map((b,i)=>`<option value="${i}">${esc(b.dimension)}</option>`).join("");
+    el("wiDim").onchange = () => showWhatIf(d.breakdowns[+el("wiDim").value]);
+    showWhatIf(d.breakdowns[0]);
+  }
+  function showWhatIf(b){
+    state.wi = b;
+    const pct = b.unit === "percent";
+    const vals = Object.values(b.data);
+    const hi = pct ? 100 : Math.max(...vals.map(Math.abs)) * 2 || 1;
+    const lo = pct ? 0 : Math.min(0, ...vals);
+    const step = pct ? 0.1 : (hi - lo) / 400;
+    el("wiIntro").textContent = pct
+      ? `Each slider sets the ${b.measure} rate for one ${b.dimension} group. The overall rate moves by the change times that group's share of rows.`
+      : `Each slider sets the ${b.measure} total for one ${b.dimension} group. The overall total moves by the same amount.`;
+    el("wiRows").innerHTML = Object.keys(b.data).map(g => `
+      <div class="wi-row" data-g="${esc(g)}">
+        <div class="g">${esc(g)}<small>${(b.counts||{})[g] ?? ""} rows</small></div>
+        <input type="range" min="${lo}" max="${hi}" step="${step}" value="${b.data[g]}" data-orig="${b.data[g]}" aria-label="${esc(g)}">
+        <div class="val">${fmt(b.data[g], b.unit)}</div>
+      </div>`).join("");
+    if(state.chart){
+      state.chart.data.labels = Object.keys(b.data);
+      state.chart.data.datasets = [{label:"Now", data:Object.values(b.data), backgroundColor:"#2a44b8"}];
+      state.chart.options.plugins.legend.display = false;
+      state.chart.update();
+      el("breakTitle").textContent = b.measure + " by " + b.dimension;
+    }
+    resetText();
+  }
+  function resetText(){
+    el("wiText").textContent = "Drag a slider to see the estimated effect on the overall number.";
+    el("wiMath").textContent = ""; el("wiNote").textContent = "";
+  }
+  el("wiRows").addEventListener("input", e => {
+    const r = e.target.closest(".wi-row"); if(!r) return;
+    const v = Math.round(parseFloat(e.target.value) * 100) / 100;
+    r.querySelector(".val").textContent = fmt(v, state.wi.unit);
+    r.classList.toggle("moved", Math.abs(v - parseFloat(e.target.dataset.orig)) > 1e-9);
+    clearTimeout(state.timer); state.timer = setTimeout(runWhatIf, 120);
+  });
+  el("wiReset").addEventListener("click", () => showWhatIf(state.wi));
+  async function runWhatIf(){
+    const b = state.wi, changes = {}, after = [];
+    el("wiRows").querySelectorAll(".wi-row").forEach(r => {
+      const inp = r.querySelector("input"), v = parseFloat(inp.value);
+      after.push(v);
+      if(r.classList.contains("moved")) changes[r.dataset.g] = v;
+    });
+    if(state.chart){
+      const ds = state.chart.data.datasets;
+      ds[0].backgroundColor = "rgba(42,68,184,.28)";
+      ds[1] = {label:"What if", data:after, backgroundColor:"#a8551f"};
+      state.chart.options.plugins.legend.display = true;
+      state.chart.update("none");
+    }
+    if(!Object.keys(changes).length){ resetText(); return; }
+    try{
+      const r = await fetch(`/api/studio/${state.sid}/whatif`, {method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({measure:b.measure, dimension:b.dimension, changes})}).then(r=>r.json());
+      if(r.error){ el("wiText").textContent = r.error; return; }
+      el("wiText").textContent = r.text; el("wiMath").textContent = r.math; el("wiNote").textContent = r.note;
+    }catch(err){ el("wiText").textContent = "Could not compute the estimate. Try again."; }
+  }
+
+  // ---- goal seeking ----
+  function setupGoal(d){
+    if(!d.overall || d.overall.value === null || !d.breakdowns || !d.breakdowns.length) return;
+    el("goalCard").hidden = false;
+    const o = d.overall, pct = o.unit === "percent";
+    el("goalIntro").textContent = `The overall ${o.label} is ${fmt(o.value, o.unit)} today. Set a target and AutoDS finds the smallest move that gets there, without pushing any group past the best level a group already reaches.`;
+    el("goalUnit").textContent = pct ? "percent" : "total";
+    el("goalIn").value = ""; el("goalIn").placeholder = "e.g. " + (pct ? Math.round(o.value*0.85*10)/10 : Math.round(o.value*1.05));
+  }
+  el("goalBtn").addEventListener("click", runGoal);
+  el("goalIn").addEventListener("keydown", e => { if(e.key==="Enter") runGoal(); });
+  async function runGoal(){
+    const t = el("goalIn").value.trim(); if(!t) return el("goalIn").focus();
+    el("goalOut").hidden = false; el("goalText").textContent = "Working it out...";
+    ["goalList","goalMath","goalOpts","goalNote"].forEach(i => el(i).innerHTML = "");
+    try{
+      const g = await fetch(`/api/studio/${state.sid}/goal`, {method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({target:t, measure:state.ov.primary})}).then(r=>r.json());
+      if(g.error){ el("goalText").textContent = g.error; return; }
+      el("goalText").textContent = g.text;
+      el("goalList").innerHTML = g.changes.map(c => `<li><b>${esc(c.group)}</b> in ${esc(g.dimension)}, from ${fmt(c.from,g.unit)} to ${fmt(c.to,g.unit)} (${c.rows} rows)</li>`).join("");
+      el("goalMath").textContent = g.changes.length ? g.math : "";
+      const others = (g.options||[]).filter(o => o.dimension !== g.dimension);
+      el("goalOpts").textContent = others.length ? "Other routes, " + others.map(o =>
+        o.feasible ? `${o.dimension} needs ${o.groups} group${o.groups===1?"":"s"} to move` : `${o.dimension} tops out near ${fmt(o.reaches,g.unit)}`).join(", ") + "." : "";
+      el("goalNote").textContent = g.note;
+      state.goalTarget = g.target;
+      el("shareBtn").href = `/studio/${state.sid}/report?target=${encodeURIComponent(g.target)}`;
+    }catch(err){ el("goalText").textContent = "Could not work out the goal. Try again."; }
   }
 
   // ---- ask (streaming, reuses /api/ask_stream) ----

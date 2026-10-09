@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Decision brief, {{ dataset }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    .xrec{border-left:3px solid var(--warm);background:var(--warm-soft);border-radius:0 10px 10px 0;padding:16px 20px}
+    .xrec .h{font-family:var(--serif);font-size:21px;font-weight:600;color:var(--ink);margin-bottom:6px}
+    .xrec .mv{font-weight:600;color:var(--ink);margin:10px 0 4px}
+    .xrec .est{color:var(--accent-2);font-weight:500}
+    .fine{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-top:6px}
+    .chg{display:block;font-family:var(--mono);font-size:11.5px;margin-top:6px}
+    .chg.up{color:var(--ok)}.chg.down{color:#b23b2e}
+    .chartbox{position:relative;height:240px;margin:6px 0 14px}
+    .kv td.num{text-align:right;font-family:var(--mono)}
+    .x-foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px}
+    @media print{
+      .report-actions{display:none}
+      .report-sec{break-inside:avoid}
+      body{background:#fff}
+    }
+  </style>
+</head>
+<body>
+  <div class="report-page">
+    <div class="report-actions">
+      <a href="/studio" class="brand"><span class="brand-name">AutoDS</span></a>
+      <button class="btn" onclick="window.print()">Save as PDF</button>
+    </div>
+    {% macro fmt(v, unit) %}{% if v is none %}n/a{% elif unit == "percent" %}{{ v }}%{% else %}{% if v is number and v == v|int %}{{ "{:,}".format(v|int) }}{% elif v is number %}{{ "{:,}".format(v) }}{% else %}{{ v }}{% endif %}{% endif %}{% endmacro %}
+    <article class="report">
+      <header class="report-head">
+        <h1>Decision brief</h1>
+        <p class="report-sub">{{ dataset }}, {{ ov.n_rows }} rows and {{ ov.n_cols }} columns{% if ov.time %}, over time by {{ ov.time }}{% endif %}.</p>
+      </header>
+
+      {% if ov.kpis %}
+      <section class="report-sec">
+        <h2>The numbers</h2>
+        <div class="metrics">{% for k in ov.kpis %}
+          <div class="metric"><span class="mval">{{ fmt(k.value, k.unit) }}</span>
+            <span class="mkey">{{ k.label.replace('_', ' ') }}{% if k.agg == "sum" %} total{% else %} rate{% endif %}</span>
+            {% if k.change_pct is defined %}<span class="chg {{ k.direction }}">{{ "up" if k.direction == "up" else "down" }} {{ k.change_pct|abs }}% versus the prior {{ ov.period_grain or "period" }}</span>{% endif %}
+          </div>{% endfor %}</div>
+      </section>
+      {% endif %}
+
+      {% if ov.recommendation %}{% set r = ov.recommendation %}
+      <section class="report-sec">
+        <h2>The recommendation</h2>
+        <div class="xrec">
+          <div class="h">{{ r.headline }}</div>
+          <div>{{ r.detail }}</div>
+          <div class="mv">{{ r.move }}</div>
+          <div class="est">{{ r.estimate }}</div>
+          <div class="fine">{{ r.math }}</div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if goal %}
+      <section class="report-sec">
+        <h2>What it takes to hit {{ fmt(goal.target, goal.unit) }}</h2>
+        <p>{{ goal.text }}</p>
+        {% if goal.changes %}
+        <table class="kv"><tr><th>{{ goal.dimension }}</th><th>Now</th><th>Needed</th><th>Rows</th></tr>
+          {% for c in goal.changes %}<tr><td>{{ c.group }}</td><td class="num">{{ fmt(c.from, goal.unit) }}</td>
+            <td class="num">{{ fmt(c.to, goal.unit) }}</td><td class="num">{{ c.rows }}</td></tr>{% endfor %}</table>
+        <p class="fine">{{ goal.math }}</p>{% endif %}
+      </section>
+      {% endif %}
+
+      {% if ov.findings %}
+      <section class="report-sec">
+        <h2>Key findings</h2>
+        <ul class="report-list">{% for f in ov.findings %}<li>{{ f }}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+
+      {% if ov.trend %}
+      <section class="report-sec">
+        <h2>{{ ov.trend.measure }} over time</h2>
+        <div class="chartbox"><canvas id="trend"></canvas></div>
+      </section>
+      {% endif %}
+
+      {% if ov.breakdowns %}{% set b = ov.breakdowns[0] %}
+      <section class="report-sec">
+        <h2>{{ b.measure }} by {{ b.dimension }}</h2>
+        <div class="chartbox"><canvas id="breakdown"></canvas></div>
+        <table class="kv"><tr><th>{{ b.dimension }}</th><th>{{ b.measure }}</th><th>Rows</th></tr>
+          {% for g, v in b.data.items() %}<tr><td>{{ g }}</td><td class="num">{{ fmt(v, b.unit) }}</td>
+            <td class="num">{{ b.counts.get(g, "") if b.counts else "" }}</td></tr>{% endfor %}</table>
+      </section>
+      {% endif %}
+
+      <p class="x-foot">Every number here is computed from the data. Estimates are arithmetic on the current
+      data, the change in a group times its share of rows, and are not a measured cause and effect.
+      Built with AutoDS Decision Studio.</p>
+    </article>
+  </div>
+<script>
+  Chart.defaults.animation = false;           // draw at once so print and PDF capture the charts
+  Chart.defaults.maintainAspectRatio = false;
+  {% if ov.trend %}
+  new Chart(document.getElementById("trend"), {type:"line",
+    data:{labels:{{ ov.trend.labels|tojson }}, datasets:[{data:{{ ov.trend["values"]|tojson }},
+      borderColor:"#2a44b8", backgroundColor:"rgba(42,68,184,.08)", fill:true, tension:.25, pointRadius:3}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}}}});
+  {% endif %}
+  {% if ov.breakdowns %}
+  new Chart(document.getElementById("breakdown"), {type:"bar",
+    data:{labels:{{ ov.breakdowns[0].data.keys()|list|tojson }}, datasets:[{data:{{ ov.breakdowns[0].data.values()|list|tojson }}, backgroundColor:"#2a44b8"}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}});
+  {% endif %}
+</script>
+</body>
+</html>

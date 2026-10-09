@@ -81,7 +81,7 @@ long dashes, or curly quotes in user facing copy.
 
 ## Status
 
-Phase 1 is complete, pushed, and tested.
+Phase 1 and Phase 2 are complete and tested.
 
 - Engine: `autods/decision.py` (`build_overview(df)` returns measures, dimensions,
   time, kpis, trend, breakdowns, findings, recommendation).
@@ -93,7 +93,41 @@ Phase 1 is complete, pushed, and tested.
 To see it, run `python3 run.py` and open /studio, or click "Explore decisions" on
 the landing page.
 
-## Phase 2 starting point (do this next)
+Phase 2, what was built.
+
+- **What if.** `estimate_effect(df, measure, dimension, group, new_value)` and
+  `estimate_effects(df, measure, dimension, changes)` in `decision.py`. Both rest on
+  one exact identity. The overall mean is the row weighted average of the group
+  means, so moving a group moves the overall by the change times the group's share
+  of rows, and for a summed measure the overall total moves by the same amount as
+  the group total. Groups do not overlap, so several moves add up. Rates are clamped
+  to 0 to 100 percent. Endpoint `/api/studio/<sid>/whatif` (GET with dimension,
+  group, value, or POST JSON with dimension and a changes map). On the dashboard a
+  What if card has a slider per group for any of the top breakdowns, updates the bar
+  chart live with a What if series, and shows the estimate with its arithmetic.
+- **Goal seeking.** `goal_seek(df, measure, target)` (measure may be None for the
+  primary). For each dimension with 2 to 12 groups it brings lagging groups toward
+  the best per row level already reached in that dimension, biggest lever first,
+  until the gap closes. It picks the option that moves the fewest groups, then the
+  fewest points. No group is pushed past a level the data already shows, so when a
+  target is out of reach it says so and reports the best reachable number. Endpoint
+  `/api/studio/<sid>/goal`, surfaced as a Set a goal card.
+- **Executive share view.** `/studio/<sid>/report`, template `studio_report.html`.
+  The numbers, the recommendation, the goal plan when `?target=` is passed (the
+  dashboard's share button adds the last goal automatically), key findings, the
+  trend, and the top breakdown with a table, plus a Save as PDF button. Charts draw
+  without animation so print captures them.
+- **Richer recommendation.** The recommendation now knows direction. For measures
+  where lower is better (churn, cost, delays, defects and similar, see
+  `lower_is_better`) it targets the group furthest above the average and says bring
+  it down, otherwise the group furthest below and says lift it. Before this it could
+  suggest raising churn in the best plan. KPI tiles now lead with the primary
+  measure. The overview also returns `primary`, `overall`, and per group `counts`.
+- Tests in `tests/test_decision.py` check the estimates against the data recomputed
+  after actually shifting the group, check that applying a goal plan reproduces the
+  target, and check the copy for house style.
+
+## Phase 2 starting point (done, kept for the record)
 
 Build these three, in order, each grounded and in the house style, with tests, and
 run `python3 -m pytest -q` as you go.
@@ -120,3 +154,16 @@ run `python3 -m pytest -q` as you go.
 Keep the copilot Ask box working on the same session throughout. When Phase 2 is
 done, update this file and `CLAUDE.md`, then move on to Phase 3 (causal methods and
 optimization) from the roadmap above.
+
+## Phase 3 starting point (do this next)
+
+1. **Controlled comparisons.** Before calling a group a driver, check whether its gap
+   survives holding a second dimension fixed (compare within each level, then
+   reweight). Flag gaps that vanish as likely confounded. Add this to `decision.py`
+   and show it next to the recommendation.
+2. **Uplift where there is a treatment.** When a binary action column exists (for
+   example promo in `sample_timeseries.csv`), estimate its effect with a simple
+   difference in means with a confidence interval, then by segment.
+3. **Optimization.** Rank feasible actions by expected impact per unit of effort
+   using the goal seeking machinery, with a user set effort budget.
+Label anything not measured as causal as an estimate, as now.

@@ -16,7 +16,8 @@ AutoDS has two modes. Model Studio (the main app at /app) predicts, as above.
 Decision Studio (at /studio, see docs/DECISION_STUDIO.md) is the no-code decision
 intelligence mode: it auto builds a dashboard, finds what is notable, and
 recommends a move with an estimated impact, with the same copilot over the data.
-Phase 1 is built; the deeper phases (what-if, causal, optimization) are planned.
+Phases 1 and 2 are built (dashboard, what if, goal seeking, executive share
+view). Causal methods and optimization (Phase 3) are next.
 
 It is a portfolio project by Vinith Kumar that demonstrates a full, production
 minded ML system: multi agent pipeline, RAG, MCP server, a grounded LLM copilot,
@@ -59,9 +60,11 @@ runs fully offline on rule based text. `.env` is gitignored; never commit keys.
 - `autods/planner.py` the agentic auto-pilot (cross validates, picks the best
   model, proposes a full plan to approve).
 - `autods/decision.py` the Decision Studio engine (detects measure, dimension and
-  time roles, then builds KPIs, a trend, breakdowns, key findings and a grounded
-  recommendation with an estimated impact). Served by the /studio route and
-  /api/studio, rendered by templates/studio.html with Chart.js.
+  time roles, then builds KPIs, a trend, breakdowns, key findings and a direction
+  aware recommendation with an estimated impact, plus `estimate_effect(s)` for what
+  if and `goal_seek`). Served by /studio, /api/studio/<sid>, /whatif and /goal under
+  it, and the share view /studio/<sid>/report, rendered by templates/studio.html and
+  templates/studio_report.html with Chart.js.
 - `autods/web/` Flask app. `app.py` routes, `templates/` (landing.html is a
   self contained redesigned marketing page; `console.html` is the SPA shell;
   `partials/` are the step views), `static/style.css` the shared design system.
@@ -82,13 +85,14 @@ runs fully offline on rule based text. `.env` is gitignored; never commit keys.
   leaks into other tests.
 - The sandbox cannot write to `.git`. Commits and pushes are done by the user from
   their Mac.
+- Run tests with the project venv, `.venv/bin/python -m pytest -q`.
 
 ## Where to start now (read this)
 
-Everything below is built, pushed, and tested (81 tests passing, run
-`python3 -m pytest -q` to confirm). The immediate next task is **Decision Studio
-Phase 2**. Open `docs/DECISION_STUDIO.md`, go to the "Phase 2 starting point"
-section, and build from there. Keep everything grounded and in the house style,
+Everything below is built and tested (95 tests passing, run
+`.venv/bin/python -m pytest -q` to confirm, the system python has no pytest). The
+immediate next task is **Decision Studio Phase 3**. Open `docs/DECISION_STUDIO.md`,
+go to the "Phase 3 starting point" section, and build from there. Keep everything grounded and in the house style,
 and run the test suite as you go. Before coding, if there is any uncommitted work,
 commit and push it.
 
@@ -114,10 +118,15 @@ grounded recommendation with an estimated impact, and the copilot over the same
 data. Engine in `autods/decision.py`, page in `templates/studio.html`, tests in
 `tests/test_decision.py`.
 
+Decision Studio Phase 2 done: what if sliders per group with a live chart, goal
+seeking (smallest feasible move, capped at levels the data already reaches), an
+executive share view at /studio/<sid>/report with Save as PDF, and a direction aware
+recommendation (lower is better measures like churn are brought down, not lifted).
+
 ## Next steps
 
-- **Decision Studio Phase 2 (do this next)**: what-if sliders, goal seeking, a
-  polished executive share view. Then Phase 3 (causal, optimization). Full plan in
+- **Decision Studio Phase 3 (do this next)**: controlled comparisons, uplift where a
+  treatment column exists, and optimization of actions. Full plan in
   docs/DECISION_STUDIO.md.
 - Wrap the data copilot or the planner into the LangGraph graph or expose them as
   MCP tools (would grow the 9 and 9 counts).
